@@ -1,4 +1,4 @@
-"""Read-only access to the Notion pages shared with the pet's integration."""
+"""Access to the Notion pages shared with the pet's integration: read, and append to the end of a page."""
 
 import os
 from typing import Any, Dict, List
@@ -6,6 +6,8 @@ from typing import Any, Dict, List
 from notion_client import APIResponseError, Client
 
 MAX_PAGE_CHARS = 6000  # cap on page text sent to the model
+MAX_TEXT_CHARS = 2000  # Notion's limit for one rich-text item
+BLOCK_KINDS = {"paragraph", "bulleted_list_item", "numbered_list_item", "to_do", "heading_3"}
 
 
 def is_configured() -> bool:
@@ -81,3 +83,28 @@ def read_page(page_id: str) -> str:
     if len(text) > MAX_PAGE_CHARS:
         text = text[:MAX_PAGE_CHARS] + "\n...(truncated)"
     return text
+
+
+def _block(kind: str, text: str) -> Dict[str, Any]:
+    """Build one Notion block object of the given kind holding plain text."""
+    data: Dict[str, Any] = {"rich_text": [{"type": "text", "text": {"content": text[:MAX_TEXT_CHARS]}}]}
+    if kind == "to_do":
+        data["checked"] = False
+    return {"object": "block", "type": kind, kind: data}
+
+
+def append_to_page(page_id: str, text: str, kind: str = "paragraph") -> str:
+    """Append text to the end of a page, one block per line. Never edits or deletes existing content."""
+    if kind not in BLOCK_KINDS:
+        raise ValueError(f"kind must be one of {sorted(BLOCK_KINDS)}")
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        raise ValueError("Nothing to add.")
+    client = _client()
+    try:
+        title = _title(client.pages.retrieve(page_id=page_id))
+        client.blocks.children.append(block_id=page_id, children=[_block(kind, line) for line in lines[:100]])
+    except APIResponseError as e:
+        hint = " The integration needs the 'Insert content' capability." if e.code == "restricted_resource" else ""
+        raise RuntimeError(f"Notion error: {e.code}.{hint}") from e
+    return f'Added {len(lines[:100])} {kind.replace("_", " ")} block(s) to "{title}".'

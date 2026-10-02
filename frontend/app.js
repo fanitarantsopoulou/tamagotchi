@@ -431,19 +431,37 @@ function unlockSpeech() {
   window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
 }
 
-function pickVoice() {
-  const voices = window.speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith("el"));
+// Browsers (Chrome especially) load their voice list asynchronously: right after page load it's
+// empty, and speaking then falls back to the default English voice, which spells Greek letter by
+// letter. So wait for the list before picking a Greek voice.
+function loadVoices() {
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length) return Promise.resolve(voices);
+  return new Promise((resolve) => {
+    const done = () => resolve(window.speechSynthesis.getVoices());
+    window.speechSynthesis.addEventListener("voiceschanged", done, { once: true });
+    setTimeout(done, 2000); // some browsers never fire the event
+  });
+}
+
+async function pickVoice() {
+  const voices = (await loadVoices()).filter((v) => v.lang.toLowerCase().replace("_", "-").startsWith("el"));
   return voices.find((v) => /premium|enhanced/i.test(v.name)) || voices[0] || null;
 }
 
-function speak(text) {
+async function speak(text) {
   if (!voiceOn || !window.speechSynthesis) return;
   const clean = text.replace(/[\p{Extended_Pictographic}\uFE0F]/gu, "").trim();
   if (!clean) return;
+  const voice = await pickVoice();
+  if (!voice) {
+    console.warn("No Greek voice installed; not reading the reply aloud.");
+    return;
+  }
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(clean);
-  utterance.lang = VOICE_LANG;
-  utterance.voice = pickVoice();
+  utterance.voice = voice;
+  utterance.lang = voice.lang;
   utterance.pitch = 1.3; // a little higher: cute pet voice
   utterance.rate = 1.05;
   window.speechSynthesis.speak(utterance);
