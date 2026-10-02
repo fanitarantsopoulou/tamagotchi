@@ -1,0 +1,11 @@
+services:
+  tamagotchi:
+    build: .
+    container_name: tamagotchi
+    restart: unless-stopped
+    env_file: .env # ANTHROPIC_API_KEY, read at runtime (never baked into the image)
+    ports:
+      - "127.0.0.1:8000:8000" # only reachable from this Mac; Tailscale exposes it to your devices
+    volumes:
+      - ./backend/data:/app/backend/data # pet state survives rebuilds
+      - ./secrets:/app/secrets # Gmail login token (git-ignored)

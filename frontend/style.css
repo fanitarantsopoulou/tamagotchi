@@ -1,0 +1,404 @@
+:root {
+  --pink-1: #ffe0ef;
+  --pink-2: #ffb3d4;
+  --pink-3: #f585ba;
+  --hot-pink: #e0408f;
+  --deep-pink: #9c1f5f;
+  --mauve-3: #6b3f8f;
+  --plum: #3d2357;
+  --blue-2: #8fd0ff;
+
+  --lcd-bg: #cdd8ee;
+  --lcd-bg-dark: #4b3a6e;
+  --lcd-px: #2c1d48;
+  --lcd-px-off: rgba(44, 29, 72, 0.08);
+
+  --px: 4px; /* size of one LCD pixel (screen is 48x32) */
+
+  /* small stepped "pixel" corners, reused on the bezel, LCD, buttons and chat */
+  --notch: polygon(
+    8px 0, calc(100% - 8px) 0, calc(100% - 8px) 4px, calc(100% - 4px) 4px,
+    calc(100% - 4px) 8px, 100% 8px, 100% calc(100% - 8px), calc(100% - 4px) calc(100% - 8px),
+    calc(100% - 4px) calc(100% - 4px), calc(100% - 8px) calc(100% - 4px), calc(100% - 8px) 100%, 8px 100%,
+    8px calc(100% - 4px), 4px calc(100% - 4px), 4px calc(100% - 8px), 0 calc(100% - 8px),
+    0 8px, 4px 8px, 4px 4px, 8px 4px
+  );
+
+  /* blocky egg silhouette: big pixel steps on top, smaller on the bottom */
+  --egg: polygon(
+    64px 0, calc(100% - 64px) 0, calc(100% - 64px) 14px, calc(100% - 38px) 14px,
+    calc(100% - 38px) 28px, calc(100% - 20px) 28px, calc(100% - 20px) 44px, calc(100% - 8px) 44px,
+    calc(100% - 8px) 64px, 100% 64px, 100% calc(100% - 36px), calc(100% - 6px) calc(100% - 36px),
+    calc(100% - 6px) calc(100% - 22px), calc(100% - 16px) calc(100% - 22px), calc(100% - 16px) calc(100% - 10px),
+    calc(100% - 32px) calc(100% - 10px), calc(100% - 32px) 100%, 32px 100%, 32px calc(100% - 10px),
+    16px calc(100% - 10px), 16px calc(100% - 22px), 6px calc(100% - 22px), 6px calc(100% - 36px),
+    0 calc(100% - 36px), 0 64px, 8px 64px, 8px 44px, 20px 44px, 20px 28px, 38px 28px, 38px 14px, 64px 14px
+  );
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 60px 16px 24px;
+  font-family: "VT323", monospace;
+  color: var(--plum);
+  background-color: #f3e6f0; /* the pixel wallpaper is drawn by background.js */
+  image-rendering: pixelated;
+  overflow-x: hidden;
+}
+
+/* ---------- layout ---------- */
+.stage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 48px;
+}
+
+/* ---------- pixel art helpers (box-shadow sprites, 4px per pixel) ---------- */
+.px { position: absolute; width: 4px; height: 4px; }
+.sparkle {
+  box-shadow: 8px 0px, 8px 4px, 0px 8px, 4px 8px, 8px 8px, 12px 8px, 16px 8px, 8px 12px, 8px 16px;
+}
+.heart {
+  box-shadow: 4px 0px, 8px 0px, 16px 0px, 20px 0px, 0px 4px, 4px 4px, 8px 4px, 12px 4px, 16px 4px, 20px 4px, 24px 4px,
+    0px 8px, 4px 8px, 8px 8px, 12px 8px, 16px 8px, 20px 8px, 24px 8px, 4px 12px, 8px 12px, 12px 12px, 16px 12px,
+    20px 12px, 8px 16px, 12px 16px, 16px 16px, 12px 20px;
+}
+
+/* ---------- the pink glitter device ---------- */
+.device-wrap {
+  position: relative;
+  /* hard offset shadow that follows the stepped outline */
+  filter: drop-shadow(8px 8px 0 var(--deep-pink));
+}
+
+.keyring {
+  position: absolute;
+  top: -38px;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translateX(-50%);
+  border: 6px solid var(--hot-pink);
+  clip-path: var(--notch);
+}
+
+.device {
+  position: relative;
+  width: min(340px, 92vw);
+  height: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 52px;
+  background: var(--deep-pink); /* acts as the outline */
+  clip-path: var(--egg);
+}
+/* the glittery pink shell, inset so the dark pink shows as a pixel outline */
+.device::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  clip-path: var(--egg);
+  background:
+    radial-gradient(circle, #fff 0 1px, transparent 1.2px) 0 0 / 13px 11px,
+    radial-gradient(circle, var(--hot-pink) 0 1px, transparent 1.2px) 6px 4px / 17px 15px,
+    radial-gradient(circle, #fff 0 1px, transparent 1.2px) 3px 9px / 23px 19px,
+    var(--pink-2);
+}
+/* a second glitter layer that twinkles */
+.device::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  clip-path: var(--egg);
+  background: radial-gradient(circle, #fff 0 1.5px, transparent 1.7px) 9px 2px / 29px 31px;
+  animation: twinkle 1.2s steps(1) infinite;
+  pointer-events: none;
+}
+@keyframes twinkle { 50% { background-position: 21px 17px; } }
+
+.device > * { position: relative; z-index: 1; }
+
+.prints { position: absolute; inset: 0; z-index: 0; }
+.prints .heart { transform: scale(0.75); }
+.p1 { top: 72px; left: 26px; color: var(--hot-pink); }
+.p2 { top: 78px; right: 46px; color: #fff; }
+.p3 { top: 210px; left: 12px; color: #fff; }
+.p4 { top: 240px; right: 16px; color: var(--hot-pink); }
+.p5 { bottom: 40px; left: 54px; color: var(--hot-pink); }
+.p6 { bottom: 46px; right: 52px; color: #fff; }
+.p7 { top: 36px; left: 96px; color: #fff; }
+.p8 { top: 150px; right: 10px; color: #fff; }
+.p9 { top: 160px; left: 10px; color: var(--hot-pink); }
+.p10 { bottom: 70px; right: 24px; color: var(--hot-pink); }
+
+.brand {
+  font-family: "Press Start 2P", monospace;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #fff;
+  text-shadow: 2px 0 var(--hot-pink), -2px 0 var(--hot-pink), 0 2px var(--hot-pink), 0 -2px var(--hot-pink), 3px 3px var(--deep-pink);
+  margin-bottom: 14px;
+}
+.brand span { color: var(--hot-pink); margin: 0 4px; text-shadow: 2px 2px 0 #fff; }
+
+/* ---------- glitter bezel + LCD ---------- */
+.bezel {
+  padding: 14px;
+  clip-path: var(--notch);
+  background:
+    radial-gradient(circle, #fff 0 1px, transparent 1.2px) 0 0 / 9px 8px,
+    radial-gradient(circle, #ffc2de 0 1px, transparent 1.2px) 4px 3px / 11px 13px,
+    var(--hot-pink);
+  box-shadow: inset 0 0 0 4px var(--deep-pink);
+}
+
+.lcd {
+  position: relative;
+  padding: 6px 8px;
+  background: var(--lcd-bg);
+  clip-path: var(--notch);
+  box-shadow: inset 4px 4px 0 rgba(44, 29, 72, 0.22);
+}
+.lcd.lights-off { background: var(--lcd-bg-dark); }
+
+.icons {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 6px;
+}
+.icon {
+  width: 22px;
+  height: 22px;
+  image-rendering: pixelated;
+  opacity: 0.18;
+  cursor: pointer;
+}
+.icon.selected { opacity: 1; }
+.icon.lit { opacity: 1; animation: blink 0.8s steps(1) infinite; }
+.icon.soon { cursor: help; }
+@keyframes blink { 50% { opacity: 0.18; } }
+
+.screen {
+  position: relative;
+  margin: 4px 0;
+}
+#screen {
+  display: block;
+  width: calc(var(--px) * 48);
+  height: calc(var(--px) * 32);
+  image-rendering: pixelated;
+}
+/* faint LCD dot-matrix grid */
+.screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to right, var(--lcd-bg) 0.6px, transparent 0.6px) 0 0 / var(--px) var(--px),
+    linear-gradient(to bottom, var(--lcd-bg) 0.6px, transparent 0.6px) 0 0 / var(--px) var(--px),
+    linear-gradient(var(--lcd-px-off), var(--lcd-px-off));
+  pointer-events: none;
+}
+.lcd.lights-off .screen::after {
+  background:
+    linear-gradient(to right, var(--lcd-bg-dark) 0.6px, transparent 0.6px) 0 0 / var(--px) var(--px),
+    linear-gradient(to bottom, var(--lcd-bg-dark) 0.6px, transparent 0.6px) 0 0 / var(--px) var(--px);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 2px 6px;
+  background: var(--lcd-bg);
+  color: var(--lcd-px);
+  font-size: 17px;
+  line-height: 1;
+}
+.overlay h2 { margin: 0 0 3px; font-size: 19px; font-weight: normal; display: flex; justify-content: space-between; }
+.stat { display: flex; align-items: center; justify-content: space-between; margin: 2px 0; }
+.meter { display: flex; gap: 2px; }
+.meter i { width: 9px; height: 9px; border: 2px solid var(--lcd-px); }
+.meter i.on { background: var(--lcd-px); }
+
+.bubble {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  padding: 0 6px;
+  border: 2px solid var(--lcd-px);
+  background: var(--lcd-bg);
+  color: var(--lcd-px);
+  font-size: 18px;
+  white-space: nowrap;
+}
+
+/* ---------- buttons ---------- */
+.buttons {
+  display: flex;
+  gap: 26px;
+  margin-top: 22px;
+}
+.btn {
+  width: 34px;
+  height: 34px;
+  border: 4px solid var(--deep-pink);
+  clip-path: var(--notch);
+  cursor: pointer;
+  background: var(--hot-pink);
+  box-shadow: inset 0 -5px 0 rgba(120, 20, 70, 0.4), inset 4px 4px 0 rgba(255, 255, 255, 0.55);
+}
+.btn-b { transform: translateY(10px); }
+.btn:active, .btn.pressed { transform: translateY(3px); box-shadow: inset 0 3px 0 rgba(120, 20, 70, 0.4); }
+.btn-b:active, .btn-b.pressed { transform: translateY(13px); }
+.btn:focus-visible { outline: 3px dashed #fff; outline-offset: 3px; }
+
+.btn-labels {
+  display: flex;
+  gap: 26px;
+  margin-top: 4px;
+  font-family: "Press Start 2P", monospace;
+  font-size: 8px;
+  color: var(--deep-pink);
+}
+.btn-labels span { width: 34px; text-align: center; }
+.btn-labels span:nth-child(2) { transform: translateY(12px); }
+
+/* ---------- chat window ---------- */
+.chat {
+  width: min(340px, 92vw);
+  height: 420px;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 4px solid var(--deep-pink);
+  box-shadow: 8px 8px 0 var(--deep-pink);
+}
+.chat[hidden] { display: none; }
+
+.chat-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  font-family: "Press Start 2P", monospace;
+  font-size: 10px;
+  color: #fff;
+  /* striped retro title bar */
+  background: repeating-linear-gradient(to bottom, var(--hot-pink) 0 2px, var(--pink-3) 2px 4px);
+  border-bottom: 4px solid var(--deep-pink);
+}
+.chat-actions { display: flex; gap: 6px; }
+.chat-voice {
+  height: 22px;
+  padding: 0 6px;
+  font: inherit;
+  font-size: 8px;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 3px solid var(--deep-pink);
+  cursor: pointer;
+}
+.chat-voice[aria-pressed="false"] { opacity: 0.55; }
+.chat-close {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 3px solid var(--deep-pink);
+  cursor: pointer;
+}
+
+.chat-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: "Tiny5", "VT323", monospace; /* Tiny5 has Greek glyphs */
+  font-size: 16px;
+  line-height: 1.25;
+  background:
+    radial-gradient(circle, var(--pink-2) 0 1px, transparent 1.2px) 0 0 / 12px 12px,
+    var(--pink-1);
+}
+.msg {
+  max-width: 85%;
+  padding: 4px 8px;
+  border: 3px solid var(--deep-pink);
+  overflow-wrap: anywhere;
+}
+.msg.pet { align-self: flex-start; background: #fff; box-shadow: 3px 3px 0 var(--pink-3); }
+.msg.user { align-self: flex-end; background: var(--blue-2); color: var(--plum); border-color: var(--plum); box-shadow: 3px 3px 0 var(--mauve-3); }
+.msg.error { align-self: center; background: #fff3b8; border-style: dashed; font-size: 17px; }
+.msg.typing { color: var(--deep-pink); }
+.msg.note { align-self: center; padding: 2px 6px; font-size: 13px; color: var(--deep-pink); background: #fff; border-width: 2px; border-style: dashed; }
+
+.chat-form {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-top: 4px solid var(--deep-pink);
+  background: #fff;
+}
+.chat-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 15px;
+  color: var(--plum);
+  border: 3px solid var(--deep-pink);
+  background: var(--pink-1);
+  outline: none;
+}
+.chat-form input:focus { background: #fff; }
+.chat-form .chat-mic { background: var(--mauve-3); }
+.chat-form .chat-mic.listening { background: var(--hot-pink); animation: blink 0.6s steps(1) infinite; }
+.chat-form .chat-mic[hidden] { display: none; }
+.chat-form button {
+  padding: 0 10px;
+  font-family: "Press Start 2P", monospace;
+  font-size: 9px;
+  color: #fff;
+  background: var(--hot-pink);
+  border: 3px solid var(--deep-pink);
+  box-shadow: inset 0 -3px 0 rgba(120, 20, 70, 0.4);
+  cursor: pointer;
+}
+.chat-form button:disabled { opacity: 0.5; cursor: wait; }
+
+.hint {
+  margin: 0;
+  padding: 6px 12px;
+  text-align: center;
+  font-size: 20px;
+  line-height: 1.3;
+  background: #fff;
+  border: 3px solid var(--deep-pink);
+  box-shadow: 4px 4px 0 var(--deep-pink);
+}
+.hint b { font-family: "Press Start 2P", monospace; font-size: 10px; color: var(--hot-pink); }
+.hint span { display: block; font-size: 16px; opacity: 0.7; }
+
+@media (prefers-reduced-motion: reduce) {
+  .device::after, .icon.lit { animation: none; }
+}

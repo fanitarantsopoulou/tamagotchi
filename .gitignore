@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+.env
+backend/data/*.json
+.DS_Store
+secrets/

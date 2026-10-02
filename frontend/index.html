@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Tamagotchi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Tiny5&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="stage">
+    <div class="device-wrap">
+      <div class="keyring" aria-hidden="true"></div>
+      <div class="device">
+        <!-- printed hearts & stars on the shell -->
+        <div class="prints" aria-hidden="true">
+          <i class="px heart p1"></i><i class="px heart p2"></i><i class="px heart p3"></i>
+          <i class="px heart p4"></i><i class="px heart p5"></i><i class="px heart p6"></i>
+          <i class="px sparkle p7"></i><i class="px sparkle p8"></i><i class="px sparkle p9"></i>
+          <i class="px sparkle p10"></i>
+        </div>
+
+        <div class="brand">TAMA<span>♥</span>SMART</div>
+
+        <div class="bezel">
+          <div class="lcd" id="lcd">
+            <div class="icons" id="icons-top"></div>
+            <div class="screen">
+              <canvas id="screen" width="48" height="32"></canvas>
+              <div class="overlay" id="overlay" hidden></div>
+              <div class="bubble" id="bubble" hidden></div>
+            </div>
+            <div class="icons" id="icons-bottom"></div>
+          </div>
+        </div>
+
+        <div class="buttons">
+          <button class="btn" data-btn="A" aria-label="A: next icon"></button>
+          <button class="btn btn-b" data-btn="B" aria-label="B: select"></button>
+          <button class="btn" data-btn="C" aria-label="C: back"></button>
+        </div>
+        <div class="btn-labels" aria-hidden="true"><span>A</span><span>B</span><span>C</span></div>
+      </div>
+    </div>
+
+    <section class="chat" id="chat" hidden aria-label="Chat with your pet">
+      <header class="chat-title">
+        <span>♥ CHAT.EXE</span>
+        <span class="chat-actions">
+          <button class="chat-voice" id="chat-voice" aria-pressed="true" aria-label="Read replies aloud">♪ ON</button>
+          <button class="chat-close" id="chat-close" aria-label="Close chat">×</button>
+        </span>
+      </header>
+      <div class="chat-log" id="chat-log" aria-live="polite"></div>
+      <form class="chat-form" id="chat-form">
+        <button type="button" class="chat-mic" id="chat-mic" aria-label="Talk">MIC</button>
+        <input id="chat-input" type="text" maxlength="500" autocomplete="off" placeholder="Γράψε ή πάτα MIC...">
+        <button type="submit" class="chat-send">SEND</button>
+      </form>
+    </section>
+  </main>
+
+  <p class="hint">
+    <b>A</b> next · <b>B</b> OK · <b>C</b> back
+    <span>keyboard: ← / Enter / Esc · click the chat icon to talk</span>
+  </p>
+
+  <script src="background.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

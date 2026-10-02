@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+anthropic
+python-dotenv
+tzdata
+notion-client
+google-api-python-client
+google-auth-oauthlib
