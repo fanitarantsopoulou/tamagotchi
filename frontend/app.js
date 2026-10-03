@@ -475,7 +475,7 @@ async function press(btn) {
 document.querySelectorAll("[data-btn]").forEach((el) => el.addEventListener("click", () => press(el.dataset.btn)));
 document.addEventListener("keydown", (e) => {
   // While typing in the chat, keys belong to the input (Esc still closes the chat).
-  if (e.target.closest?.(".chat, .window")) {
+  if (e.target.closest?.(".chat, .window, .walkman")) {
     if (e.key === "Escape") {
       closeChat();
       closeOutfits();
@@ -1082,6 +1082,85 @@ async function askWhatToWearFor() {
 
 calendarWear.addEventListener("click", askWhatToWearFor);
 document.getElementById("calendar-close").addEventListener("click", closeCalendar);
+
+// ---------- Spotify walkman: what's playing now ----------
+// Polls the backend every few seconds (the backend caches Spotify calls); the progress bar moves
+// smoothly in between. Hidden entirely until Spotify is connected.
+const walkman = {
+  el: document.getElementById("walkman"),
+  title: document.getElementById("walkman-title"),
+  artist: document.getElementById("walkman-artist"),
+  bar: document.getElementById("walkman-bar"),
+  toggle: document.getElementById("walkman-toggle"),
+  art: document.getElementById("walkman-art"),
+  track: null,
+  syncedAt: 0,
+  artUrl: null,
+};
+
+// Album art drawn into a 20x20 canvas and scaled up: a pixel-art cover that fits the look.
+function drawWalkmanArt(url) {
+  if (url === walkman.artUrl) return;
+  walkman.artUrl = url;
+  const g = walkman.art.getContext("2d");
+  g.clearRect(0, 0, 20, 20);
+  if (!url) return;
+  const img = new Image();
+  img.onload = () => g.drawImage(img, 0, 0, 20, 20);
+  img.src = url;
+}
+
+function renderWalkman() {
+  const t = walkman.track;
+  walkman.el.classList.toggle("playing", !!t?.is_playing);
+  walkman.toggle.textContent = t?.is_playing ? "❚❚" : "▶";
+  if (!t) {
+    walkman.bar.style.width = "0";
+    return;
+  }
+  const elapsed = t.is_playing ? Date.now() - walkman.syncedAt : 0;
+  const progress = Math.min(1, (t.progress_ms + elapsed) / (t.duration_ms || 1));
+  walkman.bar.style.width = `${progress * 100}%`;
+}
+
+async function refreshWalkman() {
+  try {
+    const data = await api("/spotify/now-playing");
+    walkman.el.hidden = !data.configured;
+    if (!data.configured) return;
+    walkman.track = data.track;
+    walkman.syncedAt = Date.now();
+    const t = data.track;
+    const title = t ? t.title : data.error || "Nothing playing";
+    if (walkman.title.textContent !== title) {
+      walkman.title.textContent = title;
+      // scroll long titles like an old LCD marquee
+      walkman.title.parentElement.classList.toggle("scroll", title.length > 18);
+    }
+    walkman.artist.textContent = t ? t.artists : "";
+    drawWalkmanArt(t?.image || null);
+    renderWalkman();
+  } catch {
+    walkman.el.hidden = true;
+  }
+}
+
+document.querySelectorAll("[data-sp]").forEach((btn) =>
+  btn.addEventListener("click", async () => {
+    play("click");
+    let action = btn.dataset.sp;
+    if (action === "toggle") action = walkman.track?.is_playing ? "pause" : "play";
+    try {
+      await api(`/spotify/${action}`, { method: "POST" });
+    } catch (e) {
+      say(e.message.includes("device") ? "OPEN SPOTIFY" : "OOPS");
+    }
+    setTimeout(refreshWalkman, 700); // give Spotify a moment to switch tracks
+  })
+);
+refreshWalkman();
+setInterval(refreshWalkman, 5000);
+setInterval(renderWalkman, 1000);
 
 // ---------- voice: speech-to-text in, text-to-speech out (all in the browser) ----------
 const VOICE_LANG = "el-GR";

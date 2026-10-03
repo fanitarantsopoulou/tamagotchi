@@ -12,6 +12,7 @@ import chat
 import mirror
 import outfit_of_day
 import pet
+import spotify_client
 import theme
 import weather
 
@@ -147,6 +148,30 @@ def get_calendar(days: int = 7):
         return {"days": calendar_reader.agenda(None, days)}
     except calendar_reader.CalendarUnavailable as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+
+# ---------- Spotify (walkman) ----------
+@app.get("/api/spotify/now-playing")
+def spotify_now_playing():
+    """What's playing right now, for the walkman on the page."""
+    if not spotify_client.is_configured():
+        return {"configured": False, "track": None}
+    try:
+        return {"configured": True, "track": spotify_client.now_playing()}
+    except spotify_client.SpotifyError as e:
+        return {"configured": True, "track": None, "error": str(e)}
+
+
+@app.post("/api/spotify/{action}")
+def spotify_control(action: str):
+    """Walkman buttons: play / pause / next / previous (needs Premium)."""
+    if action not in ("play", "pause", "next", "previous"):
+        raise HTTPException(status_code=404, detail="Unknown action")
+    try:
+        spotify_client.control(action)
+    except spotify_client.SpotifyError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    return {"ok": True}
 
 
 # ---------- Mirror mode ----------

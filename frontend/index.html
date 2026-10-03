@@ -11,6 +11,30 @@
 </head>
 <body>
   <main class="stage">
+    <!-- Spotify "now playing" as a retro walkman (hidden until Spotify is connected) -->
+    <aside class="walkman" id="walkman" hidden aria-label="Now playing on Spotify">
+      <div class="walkman-top">
+        <span class="walkman-brand">TAMA♥WALK</span>
+        <span class="walkman-led" title="playing"></span>
+      </div>
+      <div class="cassette">
+        <div class="cassette-label">
+          <canvas class="walkman-art" id="walkman-art" width="20" height="20"></canvas>
+          <div class="cassette-text">
+            <div class="marquee"><span id="walkman-title">Nothing playing</span></div>
+            <div class="walkman-artist" id="walkman-artist"></div>
+          </div>
+        </div>
+        <div class="cassette-window" aria-hidden="true"><i class="reel"></i><i class="tape"></i><i class="reel"></i></div>
+      </div>
+      <div class="walkman-progress"><i id="walkman-bar"></i></div>
+      <div class="walkman-buttons">
+        <button type="button" data-sp="previous" aria-label="Previous">◀◀</button>
+        <button type="button" data-sp="toggle" id="walkman-toggle" aria-label="Play or pause">▶</button>
+        <button type="button" data-sp="next" aria-label="Next">▶▶</button>
+      </div>
+    </aside>
+
     <div class="device-wrap">
       <div class="keyring" aria-hidden="true"></div>
       <div class="device">
