@@ -1,4 +1,7 @@
 // ---------- TAMA♥CLOCK: a pixel clock, analog or digital, dressed in the current theme ----------
+// It doubles as a Pomodoro focus timer (FOCUS button): 25' focus, 5' break, a 15' break after
+// every 4th focus round. The timer runs on an end timestamp saved in localStorage, so it keeps
+// counting through a page refresh, and the pet cheers when a round is done.
 // Drawn on a 56x56 canvas scaled up with crisp pixels. Colors come from the theme variables and
 // the corners carry the active motif's sprites (pumpkins at Halloween, trees at Christmas...), so
 // the clock changes outfit together with the device. The chosen mode is remembered per browser.
@@ -25,6 +28,7 @@
     E: ["###", "#..", "##.", "#..", "###"], F: ["###", "#..", "##.", "#..", "#.."],
     G: [".##", "#..", "#.#", "#.#", ".##"], H: ["#.#", "#.#", "###", "#.#", "#.#"],
     I: ["###", ".#.", ".#.", ".#.", "###"], J: ["..#", "..#", "..#", "#.#", ".#."],
+    K: ["#.#", "#.#", "##.", "#.#", "#.#"],
     L: ["#..", "#..", "#..", "#..", "###"], M: ["#.#", "###", "###", "#.#", "#.#"],
     N: ["##.", "#.#", "#.#", "#.#", "#.#"], O: [".#.", "#.#", "#.#", "#.#", ".#."],
     P: ["##.", "#.#", "##.", "#..", "#.."], R: ["##.", "#.#", "##.", "#.#", "#.#"],
@@ -164,14 +168,175 @@
     g.fillRect(5, 40, Math.round(((SIZE - 10) * now.getSeconds()) / 59), 1);
   }
 
+  // ---------- Pomodoro focus timer ----------
+  const focusBtn = document.getElementById("clock-focus");
+  const controls = document.getElementById("clock-controls");
+  const startBtn = document.getElementById("focus-start");
+  const ROUNDS = 4; // focus rounds before a long break
+  const PHASES = {
+    focus: { label: "FOCUS", minutes: 25, done: "BREAK TIME!" },
+    short: { label: "BREAK", minutes: 5, done: "FOCUS TIME!" },
+    long: { label: "LONG BREAK", minutes: 15, done: "FOCUS TIME!" },
+  };
+  const timer = loadTimer();
+
+  function loadTimer() {
+    const fresh = { phase: "focus", running: false, endAt: 0, leftMs: PHASES.focus.minutes * 60000, round: 0,
+                    minutes: { focus: 25, short: 5, long: 15 } };
+    try {
+      return { ...fresh, ...JSON.parse(localStorage.getItem("focusTimer") || "{}") };
+    } catch {
+      return fresh;
+    }
+  }
+
+  function saveTimer() {
+    try {
+      localStorage.setItem("focusTimer", JSON.stringify(timer));
+    } catch {
+      /* the timer still works, it just won't survive a refresh */
+    }
+  }
+
+  const leftMs = () => (timer.running ? Math.max(0, timer.endAt - Date.now()) : timer.leftMs);
+  const phaseMs = () => timer.minutes[timer.phase] * 60000;
+
+  function drawFocus(col) {
+    const left = leftMs();
+    const phase = PHASES[timer.phase];
+    g.fillStyle = col.face;
+    g.fillRect(3, 14, SIZE - 6, 34);
+    g.fillStyle = col.ink;
+    g.fillRect(3, 14, SIZE - 6, 1);
+    g.fillRect(3, 47, SIZE - 6, 1);
+    g.fillRect(3, 14, 1, 34);
+    g.fillRect(SIZE - 4, 14, 1, 34);
+
+    g.fillStyle = col.accent;
+    text(phase.label, Math.round((SIZE - textWidth(phase.label)) / 2), 17);
+
+    // MM:SS; the colon blinks only while counting, so a paused timer looks frozen
+    const secs = Math.ceil(left / 1000);
+    const pad = (n) => String(n).padStart(2, "0");
+    const colon = !timer.running || Math.floor(Date.now() / 1000) % 2 === 0 ? ":" : " ";
+    const time = `${pad(Math.floor(secs / 60))}${colon}${pad(secs % 60)}`;
+    g.fillStyle = col.ink;
+    text(time, Math.round((SIZE - textWidth(time, 2)) / 2), 25, 2);
+
+    // progress through the current phase, filling left to right
+    g.fillStyle = col.rim;
+    g.fillRect(6, 38, SIZE - 12, 2);
+    g.fillStyle = col.accent;
+    g.fillRect(6, 38, Math.round((SIZE - 12) * (1 - left / phaseMs())), 2);
+
+    // one pixel "tomato" per focus round in the cycle; done ones are filled
+    for (let i = 0; i < ROUNDS; i++) {
+      const x = C - ROUNDS * 3 + i * 6 + 1;
+      g.fillStyle = col.ink;
+      g.fillRect(x, 42, 4, 3);
+      if (i >= timer.round) {
+        g.fillStyle = col.face;
+        g.fillRect(x + 1, 43, 2, 1);
+      }
+    }
+  }
+
+  // A round ended: cheer, then move to the next phase (it waits for START, so nothing runs unnoticed).
+  function finishPhase() {
+    const phase = PHASES[timer.phase];
+    if (timer.phase === "focus") timer.round += 1;
+    let next = "focus";
+    if (timer.phase === "focus") next = timer.round >= ROUNDS ? "long" : "short";
+    if (timer.phase === "long") timer.round = 0;
+    Object.assign(timer, { phase: next, running: false, endAt: 0, leftMs: timer.minutes[next] * 60000 });
+    saveTimer();
+
+    play("happy");
+    say(phase.done, 4000);
+    if (state.pet?.alive) state.anim = { type: "play", start: performance.now(), duration: 2000 };
+    flashTitle(phase.done);
+    if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+      new Notification("TAMA♥CLOCK", { body: timer.phase === "focus" ? "Break's over, back to focus!" : "Focus round done. Take a break!" });
+    }
+    syncControls();
+  }
+
+  // The tab title blinks until you come back to the page.
+  function flashTitle(message) {
+    const original = document.title;
+    let on = false;
+    const id = setInterval(() => (document.title = (on = !on) ? `⏰ ${message}` : original), 800);
+    const stop = () => {
+      clearInterval(id);
+      document.title = original;
+      window.removeEventListener("focus", stop);
+    };
+    window.addEventListener("focus", stop);
+    if (!document.hidden) setTimeout(stop, 4000);
+  }
+
+  function syncControls() {
+    startBtn.textContent = timer.running ? "PAUSE" : leftMs() < phaseMs() ? "GO ON" : "START";
+    focusBtn.classList.toggle("running", timer.running);
+    controls.querySelectorAll("[data-adjust]").forEach((b) => (b.disabled = timer.running));
+  }
+
+  function startPause() {
+    if (timer.running) {
+      Object.assign(timer, { running: false, leftMs: leftMs(), endAt: 0 });
+    } else {
+      Object.assign(timer, { running: true, endAt: Date.now() + timer.leftMs });
+      if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+      say(timer.phase === "focus" ? "FOCUS MODE!" : "RELAX...", 1500);
+    }
+    saveTimer();
+    syncControls();
+    render();
+  }
+
+  controls.addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    play("click");
+    const action = btn.dataset.action;
+    if (action === "start") return startPause();
+    if (action === "reset") Object.assign(timer, { running: false, endAt: 0, leftMs: phaseMs() });
+    if (action === "skip") return finishPhase();
+    if (btn.dataset.adjust) {
+      // +/- 5 minutes for the current phase (between 5 and 90), only while stopped
+      const minutes = Math.min(90, Math.max(5, timer.minutes[timer.phase] + Number(btn.dataset.adjust)));
+      timer.minutes[timer.phase] = minutes;
+      timer.leftMs = minutes * 60000;
+    }
+    saveTimer();
+    syncControls();
+    render();
+  });
+
+  // ---------- views: analog / digital clock, or the focus timer ----------
   function render() {
     const now = new Date();
+    if (timer.running && leftMs() <= 0) finishPhase();
     const col = colors();
     g.clearRect(0, 0, SIZE, SIZE);
-    if (mode === "analog") drawAnalog(now, col);
+    if (focusView) drawFocus(col);
+    else if (mode === "analog") drawAnalog(now, col);
     else drawDigital(now, col);
-    decorate(mode === "analog");
-    canvas.setAttribute("aria-label", now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }));
+    decorate(mode === "analog" && !focusView);
+    canvas.setAttribute("aria-label", focusView
+      ? `${PHASES[timer.phase].label.toLowerCase()}: ${Math.ceil(leftMs() / 60000)} minutes left`
+      : now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }));
+  }
+
+  let focusView = false;
+
+  // Flip the face over (a quick squash animation) and swap the view at its midpoint.
+  function flip(change) {
+    play("click");
+    canvas.classList.remove("flip");
+    void canvas.offsetWidth; // restart the animation
+    canvas.classList.add("flip");
+    setTimeout(change, 90);
   }
 
   function setMode(next) {
@@ -186,13 +351,18 @@
     render();
   }
 
-  modeBtn.addEventListener("click", () => {
-    play("click");
-    canvas.classList.remove("flip");
-    void canvas.offsetWidth; // restart the flip animation
-    canvas.classList.add("flip");
-    setTimeout(() => setMode(mode === "analog" ? "digital" : "analog"), 90); // swap at the flip's midpoint
-  });
+  function setFocusView(on) {
+    focusView = on;
+    controls.hidden = !on;
+    modeBtn.hidden = on;
+    focusBtn.textContent = on ? "CLOCK" : "FOCUS";
+    focusBtn.title = on ? "Back to the clock" : "Pomodoro focus timer";
+    syncControls();
+    render();
+  }
+
+  modeBtn.addEventListener("click", () => flip(() => setMode(mode === "analog" ? "digital" : "analog")));
+  focusBtn.addEventListener("click", () => flip(() => setFocusView(!focusView)));
 
   // While a new theme fades in, redraw every frame so the clock's colors follow smoothly.
   document.addEventListener("themechange", () => {
@@ -205,6 +375,7 @@
   });
 
   setMode(mode);
+  setFocusView(timer.running); // a timer that was running before a refresh opens straight to it
   // Tick exactly on each new second.
   setTimeout(function tick() {
     render();

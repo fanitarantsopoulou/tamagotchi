@@ -48,9 +48,19 @@
     <aside class="clock" id="clock" aria-label="Clock">
       <div class="walkman-top">
         <span class="walkman-brand">TAMA♥CLOCK</span>
-        <button type="button" class="clock-mode" id="clock-mode">DIGI</button>
+        <span class="walkman-right">
+          <button type="button" class="clock-mode" id="clock-mode">DIGI</button>
+          <button type="button" class="clock-mode" id="clock-focus">FOCUS</button>
+        </span>
       </div>
       <canvas class="clock-face" id="clock-face" width="56" height="56" role="img"></canvas>
+      <div class="clock-controls" id="clock-controls" hidden>
+        <button type="button" data-adjust="-5" title="5 minutes less">−</button>
+        <button type="button" data-action="start" id="focus-start" class="primary">START</button>
+        <button type="button" data-adjust="5" title="5 minutes more">+</button>
+        <button type="button" data-action="skip" title="Skip to the next phase">▶▶</button>
+        <button type="button" data-action="reset" title="Restart this phase">↺</button>
+      </div>
     </aside>
     </div>
 
