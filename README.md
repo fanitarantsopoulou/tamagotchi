@@ -115,6 +115,14 @@ Everything runs in a **Docker** container on a Mac and is reachable from the pho
 <sub><i><b>SETUP.EXE</b> in the <b>Christmas</b> outfit (garland and falling snow on the LCD): the personality step, with four personalities to choose from. The pixel dots show the progress through the six steps.</i></sub>
 </div>
 
+### 🔔 Notifications (Telegram + NOTIFS.EXE)
+- A background notifier checks every few minutes and messages you on **Telegram**, through your own bot:
+  - **Calendar:** a heads-up ~30 minutes before an event (only when there is one).
+  - **Pet care:** hungry, sick, dirty, or in danger, at most once every few hours per issue.
+  - **Morning digest:** a short good-morning note with the weather, today's events (if any) and an outfit idea, written by the pet with the normal chat tools.
+- Quiet hours, digest time and a daily limit live in `config/settings.json`; the bell icon opens an in-app inbox with the same messages.
+- New sources are small `NotificationProvider` modules in `backend/notification_providers/`.
+
 ### 📱 Works on the phone
 - Served over **HTTPS through Tailscale**, so the camera and microphone work on the iPhone too. On small screens the windows open as a bottom panel.
 
@@ -272,6 +280,7 @@ All integrations are optional. Each one switches itself on once it's configured.
 | **Weather** | Works out of the box (Open-Meteo, no key). Set the city in `config/settings.json`. |
 | **Notion** | Create an internal integration at notion.so/profile/integrations with *Read content* (and *Insert content* to let the pet write), add `NOTION_TOKEN=ntn_...` to `.env`, then share pages with it (••• → Connections). |
 | **Google Calendar + Gmail** | In Google Cloud: enable the Gmail and Calendar APIs, create a *Desktop app* OAuth client and save its JSON as `secrets/google_credentials.json`. Then run `.venv/bin/python backend/google_auth.py` on the Mac once (read-only access). |
+| **Telegram** | Create a bot with @BotFather, add `TELEGRAM_BOT_TOKEN=...` to `.env`, send `/start` to your bot, then run `.venv/bin/python backend/telegram_client.py` once to link your chat. |
 | **Spotify** | Create an app at developer.spotify.com/dashboard with the redirect URI `http://127.0.0.1:8765/callback`, add `SPOTIFY_CLIENT_ID=...` to `.env`, then run `.venv/bin/python backend/spotify_client.py` once. Playback control needs Premium. |
 
 After adding keys to `.env`, run `docker compose up -d --force-recreate`.

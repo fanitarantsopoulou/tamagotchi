@@ -168,6 +168,7 @@ const ICON_ART = {
   mirror: ["..####..", ".#....#.", ".#.#..#.", ".#....#.", "..####..", "...##...", "...##...", "...##..."],
   weather: ["........", "..##....", ".####.#.", "########", "########", ".######.", "........", "........"],
   music: ["....##..", "....#.#.", "....#..#", "....#...", "....#...", ".###....", "####....", ".##....."],
+  bell: ["...##...", "..####..", ".######.", ".######.", ".######.", "########", "........", "...##..."],
   setup: ["...##...", ".#.##.#.", "..####..", "###..###", "###..###", "..####..", ".#.##.#.", "...##..."],
   calendar: [".#....#.", "########", "########", "#......#", "#.##.#.#", "#......#", "#.#.##.#", "########"],
 };
@@ -183,6 +184,7 @@ const ICONS = [
   { id: "mirror", row: "bottom" },
   { id: "weather", row: "bottom" },
   { id: "music", row: "bottom" },
+  { id: "bell", row: "bottom" },
   { id: "calendar", row: "bottom" },
   { id: "setup", row: "bottom" },
 ];
@@ -405,6 +407,7 @@ async function runIcon(icon) {
   if (icon.id === "calendar") return openCalendar();
   if (icon.id === "setup") return openWizard();
   if (icon.id === "music") return toggleWalkman();
+  if (icon.id === "bell") return openNotifs();
 
   try {
     const { pet, message } = await api(`/pet/${ACTION_FOR[icon.id]}`, { method: "POST" });
@@ -489,6 +492,7 @@ document.addEventListener("keydown", (e) => {
       closeWeather();
       closeCalendar();
       closeWizard();
+      closeNotifs();
     }
     return;
   }
@@ -520,6 +524,7 @@ function addMessage(kind, text) {
 
 async function openChat() {
   unlockSpeech();
+  closeNotifs();
   closeOutfits();
   closeMirror();
   closeWeather();
@@ -655,6 +660,7 @@ function drawTransform(now, cx, cy) {
 }
 
 async function openOutfits() {
+  closeNotifs();
   closeChat();
   closeMirror();
   closeWeather();
@@ -804,6 +810,7 @@ async function retake() {
 }
 
 async function openMirror() {
+  closeNotifs();
   closeChat();
   closeOutfits();
   closeWeather();
@@ -991,6 +998,7 @@ async function loadWeather(city) {
 }
 
 async function openWeather() {
+  closeNotifs();
   closeChat();
   closeOutfits();
   closeMirror();
@@ -1059,6 +1067,7 @@ function renderCalendar(days) {
 }
 
 async function openCalendar() {
+  closeNotifs();
   closeChat();
   closeOutfits();
   closeMirror();
@@ -1227,7 +1236,7 @@ const wizard = {
 const ICON_HELP = {
   feed: "feed", light: "light / sleep", play: "play", clean: "clean up",
   stats: "stats", chat: "chat with me", outfit: "outfits", mirror: "mirror",
-  weather: "weather", music: "show/hide walkman", calendar: "calendar", setup: "this setup",
+  weather: "weather", music: "show/hide walkman", bell: "notifications", calendar: "calendar", setup: "this setup",
 };
 
 function para(text) {
@@ -1323,6 +1332,7 @@ function renderWizard() {
 }
 
 async function openWizard() {
+  closeNotifs();
   closeChat();
   closeOutfits();
   closeMirror();
@@ -1392,6 +1402,47 @@ wizard.el.addEventListener("keydown", (e) => {
 api("/profile")
   .then((profile) => !profile.onboarded && openWizard())
   .catch(() => {});
+
+// ---------- Notifications: NOTIFS.EXE inbox ----------
+// The backend's notifier sends reminders to Telegram; this window shows the same messages.
+const notifsEl = document.getElementById("notifs");
+const notifsBody = document.getElementById("notifs-body");
+
+function renderNotifs({ telegram, inbox }) {
+  notifsBody.replaceChildren();
+  const status = el("div", "notif-status");
+  status.append("Telegram: ", el("b", "", telegram ? "connected ✓" : "not connected"));
+  notifsBody.append(status);
+  if (!inbox.length) notifsBody.append(el("div", "cal-empty", "No notifications yet."));
+  inbox.forEach((n) => {
+    const item = el("div", "notif");
+    const when = new Date(n.at).toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+    item.append(el("time", "", when), n.text);
+    notifsBody.append(item);
+  });
+}
+
+async function openNotifs() {
+  [closeChat, closeOutfits, closeMirror, closeWeather, closeCalendar, closeWizard].forEach((close) => close());
+  notifsEl.hidden = false;
+  notifsBody.replaceChildren(el("div", "wx-error", "Loading..."));
+  try {
+    renderNotifs(await api("/notifications"));
+  } catch (e) {
+    notifsBody.replaceChildren(el("div", "wx-error", e.message));
+  }
+}
+
+function closeNotifs() {
+  notifsEl.hidden = true;
+}
+
+document.getElementById("notifs-test").addEventListener("click", async () => {
+  play("click");
+  await api("/notifications/test", { method: "POST" });
+  renderNotifs(await api("/notifications"));
+});
+document.getElementById("notifs-close").addEventListener("click", closeNotifs);
 
 // ---------- voice: speech-to-text in, text-to-speech out (all in the browser) ----------
 const VOICE_LANG = "el-GR";

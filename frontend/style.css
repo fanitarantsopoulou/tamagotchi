@@ -748,6 +748,18 @@ body {
 }
 .walkman-buttons button:active { transform: translateY(2px); box-shadow: none; }
 
+/* ---------- NOTIFS.EXE (notification inbox) ---------- */
+.notif-status { margin-bottom: 8px; font-size: 13px; }
+.notif-status b { color: var(--deep-pink); }
+.notif {
+  margin-bottom: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+  background: #fff;
+  border: 2px solid var(--deep-pink);
+}
+.notif time { display: block; font-size: 11px; opacity: 0.7; margin-bottom: 2px; }
+
 /* ---------- SETUP.EXE (onboarding wizard) ---------- */
 .wizard { z-index: 30; }
 .wizard-body {

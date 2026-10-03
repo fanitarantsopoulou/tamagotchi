@@ -1,3 +1,5 @@
+import threading
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List, Literal
 
@@ -10,6 +12,7 @@ from pydantic import BaseModel, Field
 import calendar_reader
 import chat
 import mirror
+import notifier
 import outfit_of_day
 import pet
 import owner_profile
@@ -19,7 +22,16 @@ import weather
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
-app = FastAPI(title="Smart Tamagotchi")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Run the notifier in a background thread for as long as the server is up."""
+    stop = threading.Event()
+    threading.Thread(target=notifier.loop_forever, args=(stop,), daemon=True, name="notifier").start()
+    yield
+    stop.set()
+
+
+app = FastAPI(title="Smart Tamagotchi", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -152,6 +164,21 @@ def finish_onboarding(body: OnboardingAnswers):
     current = pet.get_state()
     new_pet = pet.rename(body.pet_name) if current["alive"] else pet.reset(body.pet_name)
     return {"profile": saved, "pet": new_pet}
+
+
+# ---------- Notifications ----------
+@app.get("/api/notifications")
+def get_notifications():
+    """Recent notifications (the in-app inbox) and whether Telegram is connected."""
+    import telegram_client
+
+    return {"telegram": telegram_client.is_configured(), "inbox": notifier.inbox()}
+
+
+@app.post("/api/notifications/test")
+def test_notification():
+    """Send a test notification now (to the inbox and, if connected, to Telegram)."""
+    return notifier.send_test()
 
 
 # ---------- Weather ----------
