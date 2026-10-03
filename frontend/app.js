@@ -170,6 +170,7 @@ const ICON_ART = {
   music: ["....##..", "....#.#.", "....#..#", "....#...", "....#...", ".###....", "####....", ".##....."],
   bell: ["...##...", "..####..", ".######.", ".######.", ".######.", "########", "........", "...##..."],
   setup: ["...##...", ".#.##.#.", "..####..", "###..###", "###..###", "..####..", ".#.##.#.", "...##..."],
+  memory: ["..####..", ".#....#.", "#.#..#.#", "#......#", "#.####.#", ".#....#.", "..####..", "...##..."],
   library: ["##.##.#.", "##.##.#.", "##.##.##", "#..#..##", "##.##.##", "##.##.##", "##.##..#", "########"],
   calendar: [".#....#.", "########", "########", "#......#", "#.##.#.#", "#......#", "#.#.##.#", "########"],
 };
@@ -188,6 +189,7 @@ const ICONS = [
   { id: "bell", row: "bottom" },
   { id: "calendar", row: "bottom" },
   { id: "library", row: "bottom" },
+  { id: "memory", row: "bottom" },
   { id: "setup", row: "bottom" },
 ];
 const SELECTABLE = ICONS; // every icon is a function you can select
@@ -411,6 +413,7 @@ async function runIcon(icon) {
   if (icon.id === "music") return toggleWalkman();
   if (icon.id === "bell") return openNotifs();
   if (icon.id === "library") return openLibrary();
+  if (icon.id === "memory") return openMemory();
 
   try {
     const { pet, message } = await api(`/pet/${ACTION_FOR[icon.id]}`, { method: "POST" });
@@ -497,6 +500,8 @@ document.addEventListener("keydown", (e) => {
       closeWizard();
       closeNotifs();
       closeLibrary();
+      closeMemory();
+  closeMemory();
     }
     return;
   }
@@ -530,6 +535,7 @@ async function openChat() {
   unlockSpeech();
   closeNotifs();
   closeLibrary();
+  closeMemory();
   closeOutfits();
   closeMirror();
   closeWeather();
@@ -668,6 +674,7 @@ function drawTransform(now, cx, cy) {
 async function openOutfits() {
   closeNotifs();
   closeLibrary();
+  closeMemory();
   closeChat();
   closeMirror();
   closeWeather();
@@ -819,6 +826,7 @@ async function retake() {
 async function openMirror() {
   closeNotifs();
   closeLibrary();
+  closeMemory();
   closeChat();
   closeOutfits();
   closeWeather();
@@ -1008,6 +1016,7 @@ async function loadWeather(city) {
 async function openWeather() {
   closeNotifs();
   closeLibrary();
+  closeMemory();
   closeChat();
   closeOutfits();
   closeMirror();
@@ -1078,6 +1087,7 @@ function renderCalendar(days) {
 async function openCalendar() {
   closeNotifs();
   closeLibrary();
+  closeMemory();
   closeChat();
   closeOutfits();
   closeMirror();
@@ -1344,6 +1354,7 @@ function renderWizard() {
 async function openWizard() {
   closeNotifs();
   closeLibrary();
+  closeMemory();
   closeChat();
   closeOutfits();
   closeMirror();
@@ -1434,7 +1445,7 @@ function renderNotifs({ telegram, inbox }) {
 }
 
 async function openNotifs() {
-  [closeChat, closeOutfits, closeMirror, closeWeather, closeCalendar, closeWizard, closeLibrary].forEach((close) => close());
+  [closeChat, closeOutfits, closeMirror, closeWeather, closeCalendar, closeWizard, closeLibrary, closeMemory].forEach((close) => close());
   notifsEl.hidden = false;
   notifsBody.replaceChildren(el("div", "wx-error", "Loading..."));
   try {

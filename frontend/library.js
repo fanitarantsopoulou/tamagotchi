@@ -676,7 +676,7 @@ const Library = (() => {
 
   // ---------- open / close ----------
   async function open() {
-    [closeChat, closeOutfits, closeMirror, closeWeather, closeCalendar, closeWizard, closeNotifs].forEach((close) => close());
+    [closeChat, closeOutfits, closeMirror, closeWeather, closeCalendar, closeWizard, closeNotifs, closeMemory].forEach((close) => close());
     root.hidden = false;
     try {
       if (view.mode === "book" && view.book) await openBook(view.book.id);

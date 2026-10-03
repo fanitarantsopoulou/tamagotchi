@@ -176,6 +176,27 @@
       <div class="lib-dialog" id="lib-dialog" hidden></div>
     </section>
 
+    <!-- What the pet remembers about you (looked up by the chat only when needed) -->
+    <section class="window memory" id="memory" hidden aria-label="Memory">
+      <header class="chat-title">
+        <span>♥ MEMORY.EXE</span>
+        <button class="chat-close" id="memory-close" aria-label="Close memory">×</button>
+      </header>
+      <div class="memory-list" id="memory-list"></div>
+      <form class="memory-form" id="memory-form">
+        <div class="memory-row">
+          <select name="category" aria-label="Category"></select>
+          <input name="subject" maxlength="80" placeholder="Who / what (optional)" autocomplete="off">
+        </div>
+        <textarea name="text" maxlength="500" rows="2" required placeholder="e.g. My team lead, loves deadlines"></textarea>
+        <div class="memory-row">
+          <label class="memory-private"><input type="checkbox" name="private"> Private (the chat never sees it)</label>
+          <button type="button" class="lib-btn" id="memory-cancel" hidden>CANCEL</button>
+          <button type="submit" class="lib-btn primary">ADD</button>
+        </div>
+      </form>
+    </section>
+
     <!-- First-time setup wizard (also reopened from the gear icon) -->
     <section class="window wizard" id="wizard" hidden aria-label="Setup">
       <header class="chat-title">
@@ -202,5 +223,6 @@
   <script src="vendor/highlight.min.js"></script>
   <script src="app.js"></script>
   <script src="library.js"></script>
+  <script src="memory.js"></script>
 </body>
 </html>

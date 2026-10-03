@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 import calendar_reader
 import chat
 from library import routes as library_routes
+from memory import routes as memory_routes
 import mirror
 import notifier
 import outfit_of_day
@@ -265,6 +266,9 @@ async def mirror_photo(photo: UploadFile = File(...)):
 
 # ---------- Library (personal knowledge base) ----------
 app.include_router(library_routes.router)
+
+# ---------- Memory (personal facts the pet looks up on demand) ----------
+app.include_router(memory_routes.router)
 
 
 # Must be mounted last so it doesn't shadow the /api routes.

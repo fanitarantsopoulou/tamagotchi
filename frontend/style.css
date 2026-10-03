@@ -1277,3 +1277,50 @@ body {
 
 /* a file is being dragged over the library or the chat */
 .drop-target { outline: 4px dashed var(--hot-pink); outline-offset: 4px; }
+
+/* ---------- MEMORY.EXE ---------- */
+.memory-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 10px;
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 14px;
+  color: var(--plum);
+  background: var(--pink-1);
+}
+.memory-cat { margin: 8px 0 4px; font-family: "Press Start 2P", monospace; font-size: 8px; color: var(--deep-pink); }
+.memory-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin-bottom: 4px;
+  padding: 4px 6px;
+  background: #fff;
+  border: 2px solid var(--pink-2);
+}
+.memory-item p { flex: 1; margin: 0; overflow-wrap: anywhere; }
+.memory-item b { font-weight: normal; color: var(--deep-pink); }
+.memory-item .lib-tag { margin-left: 4px; }
+.memory-item .lib-btn { padding: 2px 4px; font-size: 7px; }
+.memory-item .lib-btn.confirm { color: #fff; background: #b3261e; }
+.memory-form { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-top: 4px solid var(--deep-pink); background: #fff; }
+.memory-row { display: flex; gap: 6px; align-items: center; }
+.memory-form select, .memory-form input[name=subject], .memory-form textarea {
+  min-width: 0;
+  padding: 3px 6px;
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 14px;
+  color: var(--plum);
+  background: var(--pink-1);
+  border: 3px solid var(--deep-pink);
+  outline: none;
+}
+.memory-form input[name=subject] { flex: 1; }
+.memory-form textarea { resize: none; }
+.memory-private { flex: 1; display: flex; align-items: center; gap: 4px; font-family: "Tiny5", "VT323", monospace; font-size: 13px; color: var(--plum); }
+.memory-private input { accent-color: var(--hot-pink); }
+@media (max-width: 760px) {
+  .memory-form select, .memory-form input[name=subject], .memory-form textarea { font-size: 16px; } /* no iOS zoom */
+}
+.lib-btn[hidden] { display: none; }
