@@ -3,37 +3,27 @@
 import base64
 import html
 import re
-import threading
-from pathlib import Path
 from typing import Any, Dict, List
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
-SECRETS_DIR = Path(__file__).resolve().parent.parent / "secrets"
-CLIENT_FILE = SECRETS_DIR / "gmail_credentials.json"  # OAuth client, downloaded from Google Cloud
-TOKEN_FILE = SECRETS_DIR / "gmail_token.json"  # created once by gmail_auth.py
+import google_auth
+
 MAX_EMAIL_CHARS = 6000  # cap on email text sent to the model
-LOCK = threading.Lock()  # token refreshes rewrite TOKEN_FILE
 
 
 def is_configured() -> bool:
-    """True once gmail_auth.py has been run and a token exists."""
-    return TOKEN_FILE.exists()
+    """True once the Google login (google_auth.py) has been done."""
+    return google_auth.is_configured()
 
 
 def _service():
-    """Build a Gmail API client, refreshing (and re-saving) the access token when needed."""
-    with LOCK:
-        creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
-        if not creds.valid:
-            if not creds.refresh_token:
-                raise RuntimeError("Gmail login expired. Run gmail_auth.py again on the Mac.")
-            creds.refresh(Request())
-            TOKEN_FILE.write_text(creds.to_json())
+    """Build a Gmail API client with the shared Google login."""
+    try:
+        creds = google_auth.credentials()
+    except google_auth.GoogleAuthError as e:
+        raise RuntimeError(str(e)) from e
     return build("gmail", "v1", credentials=creds, cache_discovery=False)
 
 
