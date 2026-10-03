@@ -278,7 +278,9 @@
   function syncControls() {
     startBtn.textContent = timer.running ? "PAUSE" : leftMs() < phaseMs() ? "GO ON" : "START";
     focusBtn.classList.toggle("running", timer.running);
-    controls.querySelectorAll("[data-adjust]").forEach((b) => (b.disabled = timer.running));
+    controls.querySelectorAll("[data-adjust], [data-preset]").forEach((b) => (b.disabled = timer.running));
+    controls.querySelectorAll("[data-preset]").forEach((b) =>
+      b.classList.toggle("on", Number(b.dataset.preset) === timer.minutes.focus));
   }
 
   function startPause() {
@@ -294,11 +296,19 @@
     render();
   }
 
+  // Presets set the focus length; breaks scale with it (25' -> 5', 50' -> 10', 90' -> 18').
+  function usePreset(minutes) {
+    const short = Math.max(5, Math.round(minutes / 5));
+    timer.minutes = { focus: minutes, short, long: Math.max(15, short * 3) };
+    Object.assign(timer, { phase: "focus", running: false, endAt: 0, leftMs: minutes * 60000 });
+  }
+
   controls.addEventListener("click", (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
     play("click");
     const action = btn.dataset.action;
+    if (btn.dataset.preset) usePreset(Number(btn.dataset.preset));
     if (action === "start") return startPause();
     if (action === "reset") Object.assign(timer, { running: false, endAt: 0, leftMs: phaseMs() });
     if (action === "skip") return finishPhase();
@@ -373,6 +383,12 @@
     };
     requestAnimationFrame(step);
   });
+
+  // What the rest of the page needs to know (the pet reads along while a focus round runs).
+  window.FocusTimer = {
+    get phase() { return timer.phase; },
+    get running() { return timer.running; },
+  };
 
   setMode(mode);
   setFocusView(timer.running); // a timer that was running before a refresh opens straight to it

@@ -88,6 +88,9 @@ const S = {
   ],
   z: ["###", ".#.", "###"],
   skull: [".###.", "#.#.#", "#####", ".#.#."],
+  // the pet's open book while it studies with you (two frames: a page turning)
+  book: [".###.###.", "#...#...#", "#.#.#.#.#", "#...#...#", "#########"],
+  bookTurn: [".###..##.", "#...##..#", "#.#.#.#.#", "#...#...#", "#########"],
   thought: ["#......", ".......", ".#.....", "...###.", "..#####", "...###."], // dots + rice ball
   stink: ["#.", ".#", "#."],
   question: [".##.", "#..#", "..#.", ".#..", "....", ".#.."],
@@ -1680,6 +1683,20 @@ function drawMoodEffects(mood, stage, x, y, w, now, frame) {
   }
 }
 
+// The pet studying: it nods along every few seconds, holds an open book in front of it (a page
+// turns now and then) and a "..." thought blinks above its head.
+function drawReading(rows, x, y, w, now) {
+  const nod = Math.floor(now / 1800) % 3 === 2 ? 1 : 0;
+  drawSprite(ctx, rows, x, y + nod);
+  const bx = x + Math.round(w / 2) - 4;
+  const by = GROUND - S.book.length;
+  ctx.clearRect(bx - 1, by - 1, S.book[0].length + 2, S.book.length + 1); // the book covers the body
+  const turning = Math.floor(now / 400) % 12 === 0;
+  drawSprite(ctx, turning ? S.bookTurn : S.book, bx, by);
+  const dots = Math.floor(now / 600) % 4; // . .. ... (pause)
+  for (let i = 0; i < Math.min(dots, 3); i++) ctx.fillRect(x + w + 2 + i * 2, y - 2, 1, 1);
+}
+
 function render(now) {
   requestAnimationFrame(render);
   ctx.clearRect(0, 0, W, H);
@@ -1720,11 +1737,15 @@ function render(now) {
   const rows = frame && !sleeping ? variant(p.stage, face, "step") : variant(p.stage, face);
   const w = rows[0].length;
 
-  if (!sleeping && !anim) wander(now, w, style);
+  // Pomodoro: during a focus round the pet sits still and reads along; on a break it bounces.
+  const focus = window.FocusTimer?.running ? window.FocusTimer.phase : null;
+  const reading = focus === "focus" && !sleeping && !anim && !state.transform;
+  if (reading) state.x = Math.round((W - w) / 2) - 4;
+  else if (!sleeping && !anim) wander(now, w, style);
   let x = state.x;
   let y = GROUND - rows.length;
-  if (!sleeping && !anim) {
-    if (style.bounce && frame) y -= 1;
+  if (!sleeping && !anim && !reading) {
+    if ((style.bounce || focus) && frame) y -= 1; // a break is play time
     if (style.shake) x += Math.floor(now / 120) % 2; // shivering
   }
 
@@ -1745,6 +1766,11 @@ function render(now) {
   if (state.transform) {
     drawTransform(now, x + w / 2, y + rows.length / 2);
     drawSprite(ctx, rows, x, y, { flip: Math.floor(now / 120) % 2 === 0 }); // spinning
+    return;
+  }
+
+  if (reading) {
+    drawReading(rows, x, y, w, now);
     return;
   }
 

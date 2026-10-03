@@ -1423,7 +1423,7 @@ body {
 /* ---------- TAMA♥CLOCK: focus timer controls ---------- */
 .clock-mode[hidden] { display: none; }
 .clock-mode.running { color: #fff; background: var(--hot-pink); animation: blink 1s steps(1) infinite; }
-.clock-controls { display: flex; justify-content: center; gap: 4px; margin-top: 8px; }
+.clock-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 8px; }
 .clock-controls[hidden] { display: none; }
 .clock-controls button {
   min-width: 26px;
@@ -1439,3 +1439,6 @@ body {
 .clock-controls button.primary { min-width: 58px; color: #fff; background: var(--hot-pink); }
 .clock-controls button:disabled { opacity: 0.4; cursor: default; }
 .clock-controls button:active { translate: 0 1px; box-shadow: none; }
+.clock-presets { display: flex; justify-content: center; gap: 3px; width: 100%; }
+.clock-controls .clock-presets button { min-width: 0; flex: 1; height: 20px; font-size: 7px; }
+.clock-controls .clock-presets button.on { color: #fff; background: var(--deep-pink); }
