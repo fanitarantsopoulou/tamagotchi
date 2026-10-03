@@ -167,6 +167,7 @@ const ICON_ART = {
   outfit: ["...##...", "..#..#..", ".....#..", "....#...", "...##...", ".##..##.", "#......#", "########"],
   mirror: ["..####..", ".#....#.", ".#.#..#.", ".#....#.", "..####..", "...##...", "...##...", "...##..."],
   weather: ["........", "..##....", ".####.#.", "########", "########", ".######.", "........", "........"],
+  music: ["....##..", "....#.#.", "....#..#", "....#...", "....#...", ".###....", "####....", ".##....."],
   setup: ["...##...", ".#.##.#.", "..####..", "###..###", "###..###", "..####..", ".#.##.#.", "...##..."],
   calendar: [".#....#.", "########", "########", "#......#", "#.##.#.#", "#......#", "#.#.##.#", "########"],
 };
@@ -181,6 +182,7 @@ const ICONS = [
   { id: "outfit", row: "bottom" },
   { id: "mirror", row: "bottom" },
   { id: "weather", row: "bottom" },
+  { id: "music", row: "bottom" },
   { id: "calendar", row: "bottom" },
   { id: "setup", row: "bottom" },
 ];
@@ -402,6 +404,7 @@ async function runIcon(icon) {
   if (icon.id === "weather") return openWeather();
   if (icon.id === "calendar") return openCalendar();
   if (icon.id === "setup") return openWizard();
+  if (icon.id === "music") return toggleWalkman();
 
   try {
     const { pet, message } = await api(`/pet/${ACTION_FOR[icon.id]}`, { method: "POST" });
@@ -1132,7 +1135,37 @@ function renderWalkman() {
   walkman.bar.style.width = `${progress * 100}%`;
 }
 
+// The user can close the walkman (×) and bring it back from the music icon; the choice is
+// remembered in this browser only.
+function walkmanClosed() {
+  try {
+    return localStorage.getItem("walkmanClosed") === "true";
+  } catch {
+    return false;
+  }
+}
+
+function setWalkmanClosed(closed) {
+  try {
+    localStorage.setItem("walkmanClosed", String(closed));
+  } catch {
+    /* storage may be blocked; the choice just won't be remembered */
+  }
+}
+
+function toggleWalkman() {
+  const close = !walkmanClosed();
+  setWalkmanClosed(close);
+  if (close) walkman.el.hidden = true;
+  else refreshWalkman();
+  say(close ? "MUSIC OFF" : "MUSIC ON");
+}
+
 async function refreshWalkman() {
+  if (walkmanClosed()) {
+    walkman.el.hidden = true;
+    return; // no polling while it's closed
+  }
   try {
     const data = await api("/spotify/now-playing");
     walkman.el.hidden = !data.configured;
@@ -1153,6 +1186,12 @@ async function refreshWalkman() {
     walkman.el.hidden = true;
   }
 }
+
+document.getElementById("walkman-close").addEventListener("click", () => {
+  play("click");
+  setWalkmanClosed(true);
+  walkman.el.hidden = true;
+});
 
 document.querySelectorAll("[data-sp]").forEach((btn) =>
   btn.addEventListener("click", async () => {
@@ -1188,7 +1227,7 @@ const wizard = {
 const ICON_HELP = {
   feed: "feed", light: "light / sleep", play: "play", clean: "clean up",
   stats: "stats", chat: "chat with me", outfit: "outfits", mirror: "mirror",
-  weather: "weather", calendar: "calendar", setup: "this setup",
+  weather: "weather", music: "show/hide walkman", calendar: "calendar", setup: "this setup",
 };
 
 function para(text) {

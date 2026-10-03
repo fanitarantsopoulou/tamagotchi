@@ -685,6 +685,17 @@ body {
 .walkman[hidden] { display: none; }
 .walkman-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .walkman-brand { font-family: "Press Start 2P", monospace; font-size: 9px; text-shadow: 2px 2px 0 var(--deep-pink); }
+.walkman-right { display: flex; align-items: center; gap: 6px; }
+.walkman-close {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  font: 12px/1 "Press Start 2P", monospace;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 2px solid var(--deep-pink);
+  cursor: pointer;
+}
 .walkman-led { width: 8px; height: 8px; background: #3a2a3a; border: 2px solid var(--deep-pink); }
 .walkman.playing .walkman-led { background: #7dff6b; animation: blink 1s steps(1) infinite; }
 
