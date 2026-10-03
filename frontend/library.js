@@ -677,7 +677,7 @@ const Library = (() => {
   // ---------- open / close ----------
   async function open() {
     [closeChat, closeOutfits, closeMirror, closeWeather, closeCalendar, closeWizard, closeNotifs, closeMemory].forEach((close) => close());
-    root.hidden = false;
+    showWindow(root);
     try {
       if (view.mode === "book" && view.book) await openBook(view.book.id);
       else await showShelf();
@@ -687,7 +687,7 @@ const Library = (() => {
   }
 
   function close() {
-    root.hidden = true;
+    hideWindow(root);
     dialogEl.hidden = true;
   }
 

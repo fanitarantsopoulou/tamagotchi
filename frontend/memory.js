@@ -118,7 +118,7 @@ const Memory = (() => {
 
   async function open() {
     [closeChat, closeOutfits, closeMirror, closeWeather, closeCalendar, closeWizard, closeNotifs, closeLibrary].forEach((close) => close());
-    root.hidden = false;
+    showWindow(root);
     resetForm();
     try {
       render(await call());
@@ -128,7 +128,7 @@ const Memory = (() => {
   }
 
   function close() {
-    root.hidden = true;
+    hideWindow(root);
   }
 
   document.getElementById("memory-close").addEventListener("click", close);

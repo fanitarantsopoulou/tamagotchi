@@ -300,6 +300,44 @@ function updateIcons() {
   });
 }
 
+// ---------- window transitions ----------
+// Windows pop open with a CSS animation (it runs whenever an element goes from hidden to shown).
+// Closing plays the reverse first: the window is pinned where it is, so the rest of the page can
+// move into place right away, and is hidden when the animation ends. A tiny piezo blip goes with each.
+const WINDOW_CLOSE_MS = 160;
+const closingTimers = new WeakMap();
+let lastWindowOpen = 0;
+
+function showWindow(win) {
+  if (closingTimers.has(win)) finishClosing(win); // reopened mid-close: snap back first
+  if (!win.hidden) return;
+  win.hidden = false;
+  lastWindowOpen = performance.now();
+  play("winOpen");
+}
+
+function hideWindow(win) {
+  if (win.hidden || closingTimers.has(win)) return;
+  const r = win.getBoundingClientRect();
+  Object.assign(win.style, {
+    position: "fixed", left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`,
+    margin: "0", bottom: "auto", transform: "none", zIndex: "30",
+  });
+  win.classList.add("win-closing");
+  closingTimers.set(win, setTimeout(() => finishClosing(win), WINDOW_CLOSE_MS));
+  // Only blip if this close isn't part of switching to another window (which plays its own sound).
+  const closedAt = performance.now();
+  setTimeout(() => lastWindowOpen < closedAt && play("winClose"), 0);
+}
+
+function finishClosing(win) {
+  clearTimeout(closingTimers.get(win));
+  closingTimers.delete(win);
+  win.classList.remove("win-closing");
+  for (const prop of ["position", "left", "top", "width", "height", "margin", "bottom", "transform", "zIndex"]) win.style[prop] = "";
+  win.hidden = true;
+}
+
 // ---------- state ----------
 const state = {
   pet: null,
@@ -357,6 +395,8 @@ const SOUNDS = {
   thinking: [[1760, 120], [0, 60], [1976, 120], [0, 60], [2093, 220]],
   curious: [[2093, 70], [0, 30], [3136, 160]],
   sleeping: [[2637, 260], [2093, 260], [1568, 420]],
+  winOpen: [[2637, 25], [3520, 35]],
+  winClose: [[3520, 25], [2637, 35]],
   transform: [[1568, 40], [2093, 40], [2637, 40], [3136, 40], [4186, 40], [0, 40], [1568, 40], [2093, 40], [2637, 40], [3136, 40], [4186, 40], [5274, 160]],
   hatch: [[2093, 80], [2637, 80], [3136, 80], [2637, 80], [3136, 80], [4186, 240]],
 };
@@ -541,7 +581,7 @@ async function openChat() {
   closeWeather();
   closeCalendar();
   closeWizard();
-  chatEl.hidden = false;
+  showWindow(chatEl);
   chatInput.focus();
   if (chatHistory.length) return;
   try {
@@ -556,7 +596,7 @@ async function openChat() {
 }
 
 function closeChat() {
-  chatEl.hidden = true;
+  hideWindow(chatEl);
   stopListening();
   window.speechSynthesis?.cancel();
 }
@@ -680,7 +720,7 @@ async function openOutfits() {
   closeWeather();
   closeCalendar();
   closeWizard();
-  outfitsEl.hidden = false;
+  showWindow(outfitsEl);
   try {
     const [presets, current] = await Promise.all([api("/theme/presets"), api("/theme")]);
     outfitList.innerHTML = "";
@@ -706,7 +746,7 @@ async function openOutfits() {
 }
 
 function closeOutfits() {
-  outfitsEl.hidden = true;
+  hideWindow(outfitsEl);
 }
 
 function pickOutfit(preset, btn) {
@@ -832,7 +872,7 @@ async function openMirror() {
   closeWeather();
   closeCalendar();
   closeWizard();
-  mirrorEl.hidden = false;
+  showWindow(mirrorEl);
   mirror.useFile = false;
   mirror.photo = null;
   mirrorSay("");
@@ -849,7 +889,7 @@ async function openMirror() {
 
 function closeMirror() {
   stopCamera();
-  mirrorEl.hidden = true;
+  hideWindow(mirrorEl);
 }
 
 // Upload the photo; the pet answers in the chat and reacts through its mood.
@@ -1022,12 +1062,12 @@ async function openWeather() {
   closeMirror();
   closeCalendar();
   closeWizard();
-  weatherEl.hidden = false;
+  showWindow(weatherEl);
   await loadWeather(wx.city);
 }
 
 function closeWeather() {
-  weatherEl.hidden = true;
+  hideWindow(weatherEl);
 }
 
 // Ask the pet what to wear on the selected day (and city), in the chat.
@@ -1093,7 +1133,7 @@ async function openCalendar() {
   closeMirror();
   closeWeather();
   closeWizard();
-  calendarEl.hidden = false;
+  showWindow(calendarEl);
   calendarPick = null;
   calendarWear.disabled = true;
   calendarBody.replaceChildren(el("div", "wx-error", "Loading..."));
@@ -1106,7 +1146,7 @@ async function openCalendar() {
 }
 
 function closeCalendar() {
-  calendarEl.hidden = true;
+  hideWindow(calendarEl);
 }
 
 // Ask the pet what to wear for the selected event, in the chat.
@@ -1133,6 +1173,8 @@ const walkman = {
   artist: document.getElementById("walkman-artist"),
   bar: document.getElementById("walkman-bar"),
   toggle: document.getElementById("walkman-toggle"),
+  miniToggle: document.getElementById("walkman-mini-toggle"),
+  minButton: document.getElementById("walkman-min"),
   art: document.getElementById("walkman-art"),
   track: null,
   syncedAt: 0,
@@ -1154,7 +1196,7 @@ function drawWalkmanArt(url) {
 function renderWalkman() {
   const t = walkman.track;
   walkman.el.classList.toggle("playing", !!t?.is_playing);
-  walkman.toggle.textContent = t?.is_playing ? "❚❚" : "▶";
+  walkman.toggle.textContent = walkman.miniToggle.textContent = t?.is_playing ? "❚❚" : "▶";
   if (!t) {
     walkman.bar.style.width = "0";
     return;
@@ -1182,10 +1224,34 @@ function setWalkmanClosed(closed) {
   }
 }
 
+// Minimized: only the top bar stays (with a small play/pause); the cassette folds away.
+// Remembered per browser, like the closed state.
+function setWalkmanMinimized(minimized) {
+  walkman.el.classList.toggle("minimized", minimized);
+  walkman.minButton.textContent = minimized ? "□" : "–";
+  walkman.minButton.title = minimized ? "Restore" : "Minimize";
+  walkman.minButton.setAttribute("aria-expanded", String(!minimized));
+  try {
+    localStorage.setItem("walkmanMinimized", String(minimized));
+  } catch {
+    /* not remembered, that's all */
+  }
+}
+
+walkman.minButton.addEventListener("click", () => {
+  play("click");
+  setWalkmanMinimized(!walkman.el.classList.contains("minimized"));
+});
+try {
+  if (localStorage.getItem("walkmanMinimized") === "true") setWalkmanMinimized(true);
+} catch {
+  /* storage blocked: start expanded */
+}
+
 function toggleWalkman() {
   const close = !walkmanClosed();
   setWalkmanClosed(close);
-  if (close) walkman.el.hidden = true;
+  if (close) hideWindow(walkman.el);
   else refreshWalkman();
   say(close ? "MUSIC OFF" : "MUSIC ON");
 }
@@ -1219,7 +1285,7 @@ async function refreshWalkman() {
 document.getElementById("walkman-close").addEventListener("click", () => {
   play("click");
   setWalkmanClosed(true);
-  walkman.el.hidden = true;
+  hideWindow(walkman.el);
 });
 
 document.querySelectorAll("[data-sp]").forEach((btn) =>
@@ -1257,6 +1323,7 @@ const ICON_HELP = {
   feed: "feed", light: "light / sleep", play: "play", clean: "clean up",
   stats: "stats", chat: "chat with me", outfit: "outfits", mirror: "mirror",
   weather: "weather", music: "show/hide walkman", bell: "notifications", calendar: "calendar", setup: "this setup",
+  library: "library (your notes)", memory: "what I remember about you",
 };
 
 function para(text) {
@@ -1372,12 +1439,12 @@ async function openWizard() {
     /* keep the defaults */
   }
   wizard.step = 0;
-  wizard.el.hidden = false;
+  showWindow(wizard.el);
   renderWizard();
 }
 
 function closeWizard() {
-  wizard.el.hidden = true;
+  hideWindow(wizard.el);
 }
 
 async function finishWizard() {
@@ -1446,7 +1513,7 @@ function renderNotifs({ telegram, inbox }) {
 
 async function openNotifs() {
   [closeChat, closeOutfits, closeMirror, closeWeather, closeCalendar, closeWizard, closeLibrary, closeMemory].forEach((close) => close());
-  notifsEl.hidden = false;
+  showWindow(notifsEl);
   notifsBody.replaceChildren(el("div", "wx-error", "Loading..."));
   try {
     renderNotifs(await api("/notifications"));
@@ -1456,7 +1523,7 @@ async function openNotifs() {
 }
 
 function closeNotifs() {
-  notifsEl.hidden = true;
+  hideWindow(notifsEl);
 }
 
 document.getElementById("notifs-test").addEventListener("click", async () => {

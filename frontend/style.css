@@ -1324,3 +1324,56 @@ body {
   .memory-form select, .memory-form input[name=subject], .memory-form textarea { font-size: 16px; } /* no iOS zoom */
 }
 .lib-btn[hidden] { display: none; }
+
+/* ---------- transitions: windows pop open and shrink away ----------
+   `scale` / `translate` (not `transform`) so they combine with the phone layout's centering. */
+.chat, .window, .walkman { animation: win-open 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.25); }
+.win-closing { animation: win-close 0.16s ease-in forwards; pointer-events: none; }
+@keyframes win-open {
+  from { opacity: 0; scale: 0.88; translate: 0 14px; }
+  to { opacity: 1; scale: 1; translate: 0 0; }
+}
+@keyframes win-close {
+  to { opacity: 0; scale: 0.9; translate: 0 12px; }
+}
+/* the title bar flashes once as the window "powers on" */
+.chat:not(.win-closing) .chat-title, .window:not(.win-closing) .chat-title { animation: title-flash 0.3s steps(2) 1; }
+@keyframes title-flash { 50% { filter: brightness(1.35); } }
+
+/* views inside the library slide in when they change; dialogs pop */
+.shelf, .lib-results, .lib-content { animation: view-in 0.2s ease-out; }
+.lib-dialog:not([hidden]) { animation: fade-in 0.15s ease-out; }
+.lib-dialog-box { animation: win-open 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.25); }
+.memory-item, .chat-file-card { animation: view-in 0.2s ease-out; }
+@keyframes view-in { from { opacity: 0; translate: 0 6px; } }
+@keyframes fade-in { from { opacity: 0; } }
+/* the LCD stats screen switches on in hard steps, like an old display */
+.overlay:not([hidden]) { animation: lcd-on 0.18s steps(3); }
+@keyframes lcd-on { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .chat, .window, .walkman, .win-closing, .chat-title, .shelf, .lib-results, .lib-content, .lib-toc,
+  .lib-dialog, .lib-dialog-box, .memory-item, .chat-file-card, .overlay { animation: none !important; }
+}
+
+/* ---------- walkman: minimize ---------- */
+/* The body folds with a grid-rows transition (0fr <-> 1fr animates to the content's real height). */
+.walkman-top { transition: margin-bottom 0.22s ease; }
+.walkman-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.22s ease, opacity 0.22s ease; }
+.walkman-inner { min-height: 0; overflow: hidden; }
+.walkman.minimized .walkman-body { grid-template-rows: 0fr; opacity: 0; }
+.walkman.minimized .walkman-top { margin-bottom: 0; }
+.walkman-mini-toggle {
+  display: none;
+  height: 18px;
+  padding: 0 4px;
+  font: 8px/1 "Press Start 2P", monospace;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 2px solid var(--deep-pink);
+  cursor: pointer;
+}
+.walkman.minimized .walkman-mini-toggle { display: inline-block; animation: fade-in 0.2s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .walkman-top, .walkman-body { transition: none; }
+}
