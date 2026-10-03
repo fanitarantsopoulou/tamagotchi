@@ -90,6 +90,7 @@ const S = {
   skull: [".###.", "#.#.#", "#####", ".#.#."],
   thought: ["#......", ".......", ".#.....", "...###.", "..#####", "...###."], // dots + rice ball
   stink: ["#.", ".#", "#."],
+  question: [".##.", "#..#", "..#.", ".#..", "....", ".#.."],
 };
 
 // Per-stage tweaks (row index -> replacement row): closed eyes for sleeping, alternate feet for
@@ -103,6 +104,8 @@ const VARIANTS = {
     hungry: { 5: "####..####", 6: "####..####" },
     tired: { 3: "#..####..#", 6: "####..####" },
     sick: { 2: "#.#.##.#.#", 3: "##.####.##", 4: "#.#.##.#.#", 5: "##########", 6: "##.#..#.##" },
+    thinking: { 2: "##.####.##", 3: "##########", 5: "##########", 6: "###....###" },
+    curious: { 2: "##.#######", 3: "#######.##", 5: "####..####", 6: "##########" },
   },
   child: {
     sleep: { 3: "#...####...#" },
@@ -112,6 +115,8 @@ const VARIANTS = {
     hungry: { 5: "#####..#####", 6: "#####..#####" },
     tired: { 3: "#...####...#" },
     sick: { 2: "#.#.####.#.#", 3: "##.######.##", 4: "#.#.####.#.#", 5: "############", 6: "###.#..#.###" },
+    thinking: { 2: "##..####..##", 3: "############", 5: "############", 6: "####....####" },
+    curious: { 2: "##..########", 3: "########..##", 5: "#####..#####", 6: "############" },
   },
   adult: {
     sleep: { 4: "##############", 5: "##...####...##" },
@@ -121,6 +126,8 @@ const VARIANTS = {
     hungry: { 7: "#####....#####", 8: "#####....#####" },
     tired: { 4: "##############", 5: "##...####...##", 7: "##############" },
     sick: { 3: "##.#.####.#.##", 4: "###.######.###", 5: "##.#.####.#.##", 7: "##############", 8: "####.#..#.####" },
+    thinking: { 3: "###..####..###", 4: "###..####..###", 5: "##############", 7: "##############", 8: "#####....#####" },
+    curious: { 3: "###..#########", 4: "###..####..###", 5: "#########..###", 7: "######..######", 8: "##############" },
   },
 };
 
@@ -135,10 +142,20 @@ const MOOD_STYLE = {
   tired: { every: 1800, move: 0.3 },
   sad: { every: 2000, move: 0.25 },
   sick: { every: 1500, move: 0.2, shake: true },
+  thinking: { every: 1600, move: 0.2 },
+  curious: { every: 700, move: 0.6 },
 };
 
 // What the pet says on the LCD when its mood changes.
-const MOOD_TEXT = { happy: "YAY!", hungry: "HUNGRY!", tired: "SO SLEEPY", sad: "PLAY W/ ME", sick: "I FEEL SICK" };
+const MOOD_TEXT = {
+  happy: "YAY!",
+  hungry: "HUNGRY!",
+  tired: "SO SLEEPY",
+  sad: "PLAY W/ ME",
+  sick: "I FEEL SICK",
+  thinking: "HMM...",
+  curious: "OOH?",
+};
 
 const ICON_ART = {
   feed: ["...##...", "..####..", ".######.", "##....##", "#......#", "########", "########", ".######."],
@@ -148,6 +165,7 @@ const ICON_ART = {
   stats: ["........", "......#.", "......#.", "....#.#.", "....#.#.", "..#.#.#.", "..#.#.#.", "########"],
   chat: [".######.", "#......#", "#.#.#..#", "#......#", ".######.", "..#.....", ".#......", "........"],
   outfit: ["...##...", "..#..#..", ".....#..", "....#...", "...##...", ".##..##.", "#......#", "########"],
+  mirror: ["..####..", ".#....#.", ".#.#..#.", ".#....#.", "..####..", "...##...", "...##...", "...##..."],
   calendar: [".#....#.", "########", "########", "#......#", "#.##.#.#", "#......#", "#.#.##.#", "########"],
   attention: ["...##...", "..####..", "..####..", "..####..", "...##...", "........", "...##...", "...##..."],
 };
@@ -160,6 +178,7 @@ const ICONS = [
   { id: "stats", row: "bottom" },
   { id: "chat", row: "bottom" },
   { id: "outfit", row: "bottom" },
+  { id: "mirror", row: "bottom" },
   { id: "calendar", row: "bottom", soon: true },
   { id: "attention", row: "bottom", passive: true },
 ];
@@ -273,6 +292,8 @@ const SOUNDS = {
   sad: [[2637, 150], [2349, 150], [2093, 150], [1760, 320]],
   tired: [[1568, 220], [0, 80], [1397, 380]],
   sick: [[2093, 60], [1976, 60], [2093, 60], [1976, 60], [2093, 60], [1976, 160]],
+  thinking: [[1760, 120], [0, 60], [1976, 120], [0, 60], [2093, 220]],
+  curious: [[2093, 70], [0, 30], [3136, 160]],
   sleeping: [[2637, 260], [2093, 260], [1568, 420]],
   transform: [[1568, 40], [2093, 40], [2637, 40], [3136, 40], [4186, 40], [0, 40], [1568, 40], [2093, 40], [2637, 40], [3136, 40], [4186, 40], [5274, 160]],
   hatch: [[2093, 80], [2637, 80], [3136, 80], [2637, 80], [3136, 80], [4186, 240]],
@@ -323,6 +344,7 @@ async function runIcon(icon) {
   if (icon.id === "stats") return showStats();
   if (icon.id === "chat") return openChat();
   if (icon.id === "outfit") return openOutfits();
+  if (icon.id === "mirror") return openMirror();
 
   try {
     const { pet, message } = await api(`/pet/${ACTION_FOR[icon.id]}`, { method: "POST" });
@@ -403,6 +425,7 @@ document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       closeChat();
       closeOutfits();
+      closeMirror();
     }
     return;
   }
@@ -435,6 +458,7 @@ function addMessage(kind, text) {
 async function openChat() {
   unlockSpeech();
   closeOutfits();
+  closeMirror();
   chatEl.hidden = false;
   chatInput.focus();
   if (chatHistory.length) return;
@@ -566,6 +590,7 @@ function drawTransform(now, cx, cy) {
 
 async function openOutfits() {
   closeChat();
+  closeMirror();
   outfitsEl.hidden = false;
   try {
     const [presets, current] = await Promise.all([api("/theme/presets"), api("/theme")]);
@@ -604,6 +629,192 @@ function pickOutfit(preset, btn) {
 }
 
 document.getElementById("outfits-close").addEventListener("click", closeOutfits);
+
+// ---------- Mirror mode: photo of today's outfit -> the pet compares it with its suggestion ----------
+// Camera via getUserMedia (needs HTTPS or localhost; Tailscale serve provides HTTPS). If that's
+// unavailable or denied, a file input opens the phone's camera or photo library instead.
+// Photos stay in this page's memory only; the backend doesn't store them either.
+const MIRROR_MAX_SIDE = 1024; // resize before upload (the backend resizes again, authoritatively)
+const mirrorEl = document.getElementById("mirror");
+const mirrorVideo = document.getElementById("mirror-video");
+const mirrorStill = document.getElementById("mirror-still");
+const mirrorNote = document.getElementById("mirror-note");
+const mirrorBtns = {
+  flip: document.getElementById("mirror-flip"),
+  snap: document.getElementById("mirror-snap"),
+  retake: document.getElementById("mirror-retake"),
+  send: document.getElementById("mirror-send"),
+  file: document.getElementById("mirror-file-label"),
+};
+const mirrorFile = document.getElementById("mirror-file");
+const mirror = { stream: null, facing: "user", photo: null, photoUrl: null, useFile: false };
+
+function showMirrorButtons(...names) {
+  Object.entries(mirrorBtns).forEach(([name, el]) => (el.hidden = !names.includes(name)));
+}
+
+function mirrorSay(text) {
+  mirrorNote.textContent = text;
+  mirrorNote.hidden = !text;
+}
+
+function stopCamera() {
+  mirror.stream?.getTracks().forEach((t) => t.stop());
+  mirror.stream = null;
+  mirrorVideo.srcObject = null;
+}
+
+// Fallback: let the phone open its own camera or the photo library.
+function useFileInput(reason) {
+  mirror.useFile = true;
+  stopCamera();
+  mirrorVideo.hidden = true;
+  showMirrorButtons("file");
+  // keep an earlier note (e.g. "no suggestion today") and add the reason after it
+  if (reason) mirrorSay([mirrorNote.textContent, reason].filter(Boolean).join(" "));
+}
+
+async function startCamera() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    return useFileInput("Η live κάμερα δεν είναι διαθέσιμη εδώ, πάτα PICK PHOTO.");
+  }
+  try {
+    mirror.stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: mirror.facing, width: { ideal: 1280 }, height: { ideal: 1280 } },
+      audio: false,
+    });
+  } catch (e) {
+    const denied = e.name === "NotAllowedError";
+    return useFileInput(denied ? "Δεν έδωσες άδεια για κάμερα, πάτα PICK PHOTO." : "Η κάμερα δεν άνοιξε, πάτα PICK PHOTO.");
+  }
+  mirrorVideo.srcObject = mirror.stream;
+  mirrorVideo.classList.toggle("selfie", mirror.facing === "user");
+  mirrorVideo.hidden = false;
+  mirrorStill.hidden = true;
+  // FLIP only makes sense with more than one camera (phones)
+  const cams = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
+  showMirrorButtons("snap", ...(cams.length > 1 ? ["flip"] : []));
+}
+
+// Draw an image source onto a canvas no bigger than MIRROR_MAX_SIDE and return a JPEG blob.
+function toJpeg(source, width, height) {
+  const scale = Math.min(1, MIRROR_MAX_SIDE / Math.max(width, height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(width * scale);
+  canvas.height = Math.round(height * scale);
+  canvas.getContext("2d").drawImage(source, 0, 0, canvas.width, canvas.height);
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+}
+
+function showPhoto(blob) {
+  mirror.photo = blob;
+  if (mirror.photoUrl) URL.revokeObjectURL(mirror.photoUrl);
+  mirror.photoUrl = URL.createObjectURL(blob);
+  mirrorStill.src = mirror.photoUrl;
+  mirrorStill.hidden = false;
+  mirrorVideo.hidden = true;
+  showMirrorButtons("retake", "send");
+}
+
+async function snap() {
+  if (!mirror.stream || !mirrorVideo.videoWidth) return;
+  play("click");
+  showPhoto(await toJpeg(mirrorVideo, mirrorVideo.videoWidth, mirrorVideo.videoHeight));
+  stopCamera(); // the preview is frozen on the photo; free the camera meanwhile
+}
+
+async function retake() {
+  mirror.photo = null;
+  mirrorStill.hidden = true;
+  if (mirror.useFile) {
+    showMirrorButtons("file");
+    mirrorFile.click();
+  } else {
+    await startCamera();
+  }
+}
+
+async function openMirror() {
+  closeChat();
+  closeOutfits();
+  mirrorEl.hidden = false;
+  mirror.useFile = false;
+  mirror.photo = null;
+  mirrorSay("");
+  try {
+    const { has_suggestion } = await api("/mirror/status");
+    if (!has_suggestion) {
+      mirrorSay("Δεν μου ζήτησες outfit σήμερα, bestie! Στείλε μου φωτό και θα σου πω ελεύθερα τη γνώμη μου.");
+    }
+  } catch {
+    /* the note is optional */
+  }
+  await startCamera();
+}
+
+function closeMirror() {
+  stopCamera();
+  mirrorEl.hidden = true;
+}
+
+// Upload the photo; the pet answers in the chat and reacts through its mood.
+async function sendPhoto() {
+  if (!mirror.photo) return;
+  unlockSpeech();
+  const photo = mirror.photo;
+  const thumbUrl = URL.createObjectURL(photo); // shown in the chat, in-memory only
+  closeMirror();
+  await openChat();
+
+  const userMsg = addMessage("user", "Πώς σου φαίνεται το σημερινό μου outfit;");
+  const thumb = document.createElement("img");
+  thumb.className = "thumb";
+  thumb.alt = "Outfit photo";
+  thumb.src = thumbUrl;
+  userMsg.prepend(thumb);
+  const typing = addMessage("pet typing", "👀 ...");
+
+  const form = new FormData();
+  form.append("photo", photo, "outfit.jpg");
+  try {
+    const res = await fetch("/api/mirror", { method: "POST", body: form });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || "Κάτι πήγε στραβά, ξαναδοκίμασε!");
+    typing.remove();
+    addMessage("pet", data.comment);
+    if (data.match_level) addMessage("note", `match: ${data.match_level}`);
+    speak(data.comment);
+    setPet(data.pet); // the reaction shows up as a mood: face, sound, LCD bubble
+    // keep the chat history coherent for follow-up questions
+    chatHistory.push({ role: "user", content: "(I sent you a photo of my outfit today.)" });
+    chatHistory.push({ role: "assistant", content: data.comment });
+  } catch (e) {
+    typing.remove();
+    addMessage("error", e.message || "Κάτι πήγε στραβά, ξαναδοκίμασε!");
+  }
+}
+
+mirrorBtns.snap.addEventListener("click", snap);
+mirrorBtns.retake.addEventListener("click", retake);
+mirrorBtns.send.addEventListener("click", sendPhoto);
+mirrorBtns.flip.addEventListener("click", async () => {
+  mirror.facing = mirror.facing === "user" ? "environment" : "user";
+  stopCamera();
+  await startCamera();
+});
+mirrorFile.addEventListener("change", async () => {
+  const file = mirrorFile.files[0];
+  mirrorFile.value = ""; // allow picking the same file again
+  if (!file) return;
+  try {
+    const bitmap = await createImageBitmap(file);
+    showPhoto(await toJpeg(bitmap, bitmap.width, bitmap.height));
+    bitmap.close();
+  } catch {
+    mirrorSay("Δεν μπόρεσα να ανοίξω αυτή τη φωτογραφία, δοκίμασε άλλη.");
+  }
+});
+document.getElementById("mirror-close").addEventListener("click", closeMirror);
 
 // ---------- voice: speech-to-text in, text-to-speech out (all in the browser) ----------
 const VOICE_LANG = "el-GR";
@@ -742,6 +953,11 @@ function drawMoodEffects(mood, stage, x, y, w, now, frame) {
     drawSprite(ctx, S.skull, x + Math.floor(w / 2) - 2, Math.max(0, y - 6));
   } else if (mood === "tired") {
     drawSprite(ctx, S.z, x + w + 1, y - 2 - (Math.floor(now / 700) % 3));
+  } else if (mood === "thinking") {
+    const dots = Math.floor(now / 400) % 4; // "..." appearing one dot at a time
+    for (let i = 0; i < dots; i++) ctx.fillRect(x + w + 1 + i * 2, Math.max(0, y - 2), 1, 1);
+  } else if (mood === "curious" && frame) {
+    drawSprite(ctx, S.question, x + w + 1, Math.max(0, y - 6));
   } else if (mood === "happy" && Math.floor(now / 1000) % 3 === 0) {
     drawSprite(ctx, S.heart, x + w + 1, Math.max(0, y - 4 + frame));
   }

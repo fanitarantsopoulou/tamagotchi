@@ -68,6 +68,27 @@
       <div class="outfit-list" id="outfit-list"></div>
       <p class="outfit-tip">Or just ask in the chat, e.g. "put on something Christmassy"</p>
     </section>
+    <section class="window mirror" id="mirror" hidden aria-label="Mirror mode">
+      <header class="chat-title">
+        <span>♥ MIRROR.EXE</span>
+        <button class="chat-close" id="mirror-close" aria-label="Close mirror">×</button>
+      </header>
+      <div class="mirror-stage">
+        <video id="mirror-video" playsinline muted autoplay></video>
+        <img id="mirror-still" alt="Your outfit photo" hidden>
+        <p class="mirror-note" id="mirror-note" hidden></p>
+      </div>
+      <div class="mirror-controls">
+        <button type="button" id="mirror-flip" hidden>FLIP</button>
+        <button type="button" id="mirror-snap" class="primary">SNAP</button>
+        <label class="mirror-file" id="mirror-file-label" hidden>
+          PICK PHOTO
+          <input type="file" id="mirror-file" accept="image/*" capture="user">
+        </label>
+        <button type="button" id="mirror-retake" hidden>RETAKE</button>
+        <button type="button" id="mirror-send" class="primary" hidden>SEND</button>
+      </div>
+    </section>
   </main>
 
   <p class="hint">

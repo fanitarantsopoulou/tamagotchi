@@ -11,6 +11,7 @@ from anthropic import beta_tool
 from dotenv import load_dotenv
 
 import closet
+import outfit_of_day
 import gmail_reader
 import notion_reader
 
@@ -54,6 +55,8 @@ and shade, and say why they go together or suit the day.
 - Never invent items that aren't on the list.
 - Never claim to know what color a shade number is unless the list says so. Otherwise refer to \
 it by its number (e.g. "το KIKO 3D Hydra 19").
+- Whenever you suggest an outfit (clothes) for today, also call save_outfit_suggestion with it, \
+so you can check it later when your bestie shows you a Mirror photo. Don't mention the saving.
 - Eyeshadow palette colors aren't listed, so suggest a color family ("κάτι πράσινο από την \
 Revolution παλέτα") rather than a specific shade name.
 
@@ -220,6 +223,25 @@ def _closet_tools(changes: List[str]) -> list:
     return [add_item, update_item, remove_item]
 
 
+def _outfit_tools() -> list:
+    """Remember today's outfit suggestion for Mirror mode."""
+
+    @beta_tool
+    def save_outfit_suggestion(summary: str, pieces: List[str], colors: List[str], style: str) -> str:
+        """Save the outfit you just suggested as today's suggestion (the latest one replaces earlier ones).
+
+        Args:
+            summary: One sentence describing the outfit, e.g. "Black plain sweatshirt with black flare jeans".
+            pieces: Each clothing piece, e.g. ["black plain sweatshirt", "black flare jeans"].
+            colors: The main colors, e.g. ["black"].
+            style: The overall style in a few words, e.g. "casual chic".
+        """
+        outfit_of_day.save(summary, pieces, colors, style)
+        return "Saved as today's suggestion."
+
+    return [save_outfit_suggestion]
+
+
 def _notion_tools(changes: List[str]) -> list:
     """Notion tools (search, read, append), offered only when NOTION_TOKEN is set."""
     if not notion_reader.is_configured():
@@ -305,7 +327,7 @@ def reply(history: List[Dict[str, str]], pet: Dict[str, Any]) -> Dict[str, Any]:
             max_tokens=1024,  # replies are 1-3 sentences
             system=_system_prompt(pet),
             messages=messages,
-            tools=_closet_tools(changes) + _notion_tools(changes) + _gmail_tools(),
+            tools=_closet_tools(changes) + _outfit_tools() + _notion_tools(changes) + _gmail_tools(),
             max_iterations=MAX_TOOL_ROUNDS,
         )
         # The pet may talk before a tool call and/or after it, so keep text from every round.

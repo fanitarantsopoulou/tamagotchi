@@ -42,6 +42,8 @@ Open http://localhost:8000
 - `backend/theme.py`: visual themes. Before the normal chat, a small classifier call (structured JSON output: `is_theme_request`, `colors`, `motif`) detects requests like "βάλε κάτι χριστουγεννιάτικο"; the theme is saved in `backend/data/theme.json`. New motifs: add an entry to `PRESETS` (the prompt and schema are generated from it)
 - `frontend/themes.js`: applies a theme via CSS variables (animated with `@property`), redraws the pixel wallpaper and adds per-motif LCD effects; motif decorations live in `MOTIFS`
 - Outfits: the hanger icon opens OUTFITS.EXE to pick a preset by hand; every change plays a short "transformation" animation
+- Mirror mode (`backend/mirror.py`, `backend/outfit_of_day.py`): the mirror icon opens MIRROR.EXE (live camera, front camera by default, FLIP to switch; file-input fallback). The photo is validated (JPEG/PNG/WEBP, max 10MB), shrunk to 1024px and compared by Claude vision with the outfit the pet suggested today (saved by the chat's `save_outfit_suggestion` tool); without a suggestion it comments freely. The verdict becomes a short mood reaction (happy / thinking / curious). Photos are never stored.
+- Camera on the phone needs HTTPS: `tailscale serve --bg 8000` serves the app at `https://<mac-name>.<tailnet>.ts.net` with a Tailscale certificate (localhost works as-is on the Mac)
 - `backend/closet.py`: reads/edits `backend/data/closet.json` (makeup & clothes)
 - Voice: the chat's MIC button (speech-to-text) and spoken replies (text-to-speech) use the browser's built-in speech APIs, Greek (`el-GR`)
 - `backend/data/pet.json`: saved pet state

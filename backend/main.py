@@ -2,11 +2,14 @@ from pathlib import Path
 from typing import List, Literal
 
 import anthropic
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import chat
+import mirror
+import outfit_of_day
 import pet
 import theme
 
@@ -120,6 +123,41 @@ def pick_theme(body: ThemePick):
 def reset_theme():
     """Manually reset to the default look."""
     return theme.reset()
+
+
+# ---------- Mirror mode ----------
+# How the pet reacts to a Mirror verdict, through the regular mood system: (mood, happiness boost).
+MIRROR_REACTIONS = {"υψηλό": ("happy", 10), "μέτριο": ("thinking", 0), "χαμηλό": ("curious", 0), None: ("happy", 5)}
+
+
+@app.get("/api/mirror/status")
+def mirror_status():
+    """Whether there's an outfit suggestion for today to compare a photo with."""
+    suggestion = outfit_of_day.load_today()
+    return {"has_suggestion": suggestion is not None, "suggestion": suggestion}
+
+
+def _review_photo(data: bytes) -> dict:
+    """Validate/shrink the photo, ask the vision model, then let the pet react via its mood."""
+    image = mirror.prepare_image(data)
+    verdict = mirror.analyze(image, pet.get_state()["name"])
+    mood, boost = MIRROR_REACTIONS[verdict["match_level"]]
+    return {**verdict, "pet": pet.react(mood, boost)}
+
+
+@app.post("/api/mirror")
+async def mirror_photo(photo: UploadFile = File(...)):
+    """Compare a photo of today's outfit with the pet's suggestion (or comment freely if none).
+
+    The photo is only held in memory for this request and never saved.
+    """
+    data = await photo.read(mirror.MAX_UPLOAD_BYTES + 1)  # +1 byte so oversize files are detected
+    await photo.close()
+    try:
+        # the model call is blocking, so run it off the event loop
+        return await run_in_threadpool(_review_photo, data)
+    except mirror.MirrorError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
 
 # Must be mounted last so it doesn't shadow the /api routes.
