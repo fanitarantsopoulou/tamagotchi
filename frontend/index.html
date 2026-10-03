@@ -56,9 +56,17 @@
       <div class="chat-log" id="chat-log" aria-live="polite"></div>
       <form class="chat-form" id="chat-form">
         <button type="button" class="chat-mic" id="chat-mic" aria-label="Talk">MIC</button>
-        <input id="chat-input" type="text" maxlength="500" autocomplete="off" placeholder="Γράψε ή πάτα MIC...">
+        <input id="chat-input" type="text" maxlength="500" autocomplete="off" placeholder="Type or press MIC...">
         <button type="submit" class="chat-send">SEND</button>
       </form>
+    </section>
+    <section class="window outfits" id="outfits" hidden aria-label="Choose an outfit">
+      <header class="chat-title">
+        <span>♥ OUTFITS.EXE</span>
+        <button class="chat-close" id="outfits-close" aria-label="Close outfits">×</button>
+      </header>
+      <div class="outfit-list" id="outfit-list"></div>
+      <p class="outfit-tip">Or just ask in the chat, e.g. "put on something Christmassy"</p>
     </section>
   </main>
 
@@ -67,7 +75,7 @@
     <span>keyboard: ← / Enter / Esc · click the chat icon to talk</span>
   </p>
 
-  <script src="background.js"></script>
+  <script src="themes.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

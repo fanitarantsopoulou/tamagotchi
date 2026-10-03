@@ -39,9 +39,11 @@ Open http://localhost:8000
 - `backend/pet.py`: game logic (stats, decay over time, actions). Rates are constants at the top of the file.
 - `backend/main.py`: API (`GET /api/pet`, `POST /api/pet/{feed|play|sleep|clean}`, `POST /api/reset`, `POST /api/chat`)
 - `backend/chat.py`: AI chat with Claude (`claude-haiku-4-5`), replies in Greek; persona, live stats and closet go in the system prompt, plus tools to add/update/remove closet items
+- `backend/theme.py`: visual themes. Before the normal chat, a small classifier call (structured JSON output: `is_theme_request`, `colors`, `motif`) detects requests like "βάλε κάτι χριστουγεννιάτικο"; the theme is saved in `backend/data/theme.json`. New motifs: add an entry to `PRESETS` (the prompt and schema are generated from it)
+- `frontend/themes.js`: applies a theme via CSS variables (animated with `@property`), redraws the pixel wallpaper and adds per-motif LCD effects; motif decorations live in `MOTIFS`
+- Outfits: the hanger icon opens OUTFITS.EXE to pick a preset by hand; every change plays a short "transformation" animation
 - `backend/closet.py`: reads/edits `backend/data/closet.json` (makeup & clothes)
 - Voice: the chat's MIC button (speech-to-text) and spoken replies (text-to-speech) use the browser's built-in speech APIs, Greek (`el-GR`)
-- `frontend/background.js`: draws the pixel-art wallpaper
 - `backend/data/pet.json`: saved pet state
 - `.env`: holds `ANTHROPIC_API_KEY` (git-ignored; template in `.env.example`)
   ![alt text](image.png)
