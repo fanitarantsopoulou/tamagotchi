@@ -32,6 +32,10 @@ TIRED_BELOW = 20
 SAD_BELOW = 25
 HAPPY_ABOVE = 60
 
+# Short-lived reactions (e.g. to a Mirror photo) override the stat-based mood for a while.
+REACTION_MOODS = {"happy", "thinking", "curious"}
+REACTION_SECONDS = 120
+
 # (age in minutes it lasts until, stage name)
 STAGES = [(1, "egg"), (60, "baby"), (24 * 60, "child"), (math.inf, "adult")]
 
@@ -111,7 +115,8 @@ def tick(pet: Dict[str, Any], now: Optional[float] = None) -> Dict[str, Any]:
 
 
 def mood_of(pet: Dict[str, Any], stage: str) -> str:
-    """The pet's mood from its stats; the most urgent one wins when several apply."""
+    """The pet's mood from its stats; the most urgent one wins when several apply.
+    A recent reaction (see react()) wins over everything except dead/egg/sleeping/sick."""
     if not pet["alive"]:
         return "dead"
     if stage == "egg":
@@ -120,6 +125,9 @@ def mood_of(pet: Dict[str, Any], stage: str) -> str:
         return "sleeping"
     if pet["health"] < SICK_HEALTH or pet["poops"] >= SICK_POOPS:
         return "sick"
+    reaction = pet.get("reaction")
+    if reaction and reaction["until"] > time.time():
+        return reaction["mood"]
     if pet["hunger"] < HUNGRY_BELOW:
         return "hungry"
     if pet["energy"] < TIRED_BELOW:
@@ -134,7 +142,7 @@ def mood_of(pet: Dict[str, Any], stage: str) -> str:
 def public_view(pet: Dict[str, Any]) -> Dict[str, Any]:
     """Build the API response: rounded stats plus derived stage, age, mood and attention flag."""
     now = time.time()
-    view = {k: v for k, v in pet.items() if k != "poop_timer"}
+    view = {k: v for k, v in pet.items() if k not in ("poop_timer", "reaction")}
     for key in ("hunger", "happiness", "energy", "health"):
         view[key] = round(pet[key])
     view["stage"] = stage_of(pet, now)
@@ -164,6 +172,19 @@ def get_state() -> Dict[str, Any]:
     """Load, update and save the pet, then return its public view."""
     with LOCK:
         pet = load()
+        save(pet)
+    return public_view(pet)
+
+
+def react(mood: str, happiness_boost: float = 0) -> Dict[str, Any]:
+    """Show a reaction mood for REACTION_SECONDS (used by Mirror mode); returns the new public view."""
+    if mood not in REACTION_MOODS:
+        raise ValueError(f"Unknown reaction mood: {mood}")
+    with LOCK:
+        pet = load()
+        if pet["alive"]:
+            pet["reaction"] = {"mood": mood, "until": time.time() + REACTION_SECONDS}
+            pet["happiness"] = _clamp(pet["happiness"] + happiness_boost)
         save(pet)
     return public_view(pet)
 

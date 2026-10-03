@@ -6,3 +6,5 @@ tzdata
 notion-client
 google-api-python-client
 google-auth-oauthlib
+python-multipart
+pillow

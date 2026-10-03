@@ -188,6 +188,28 @@ body {
   box-shadow: inset 0 0 0 4px var(--deep-pink);
 }
 
+.bezel { position: relative; }
+.attention-led {
+  /* a small dark LED housing in the bezel's right margin, next to the top of the screen;
+     dark so the light reads on every theme and clearly isn't a button */
+  position: absolute;
+  top: 14px;
+  right: 2px;
+  display: flex;
+  padding: 3px 2px;
+  background: #1a1030;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+}
+.attention-led canvas {
+  width: 6px;
+  height: 16px;
+  image-rendering: pixelated;
+  opacity: 0.2; /* "off" */
+}
+.attention-led.lit canvas { opacity: 1; animation: led-blink 0.8s steps(1) infinite; } /* "on": blinking */
+@keyframes led-blink { 50% { opacity: 0.3; } }
+
 .lcd {
   position: relative;
   padding: 6px 8px;
@@ -209,8 +231,19 @@ body {
   opacity: 0.18;
   cursor: pointer;
 }
+.icon[hidden] { display: none; }
 .icon.selected { opacity: 1; }
-.icon.lit { opacity: 1; animation: blink 0.8s steps(1) infinite; }
+/* bottom bar: < [4 functions] > */
+#icons-bottom { align-items: center; gap: 4px; }
+.icon-page { flex: 1; display: flex; justify-content: space-between; }
+.page-arrow {
+  width: 8px;
+  height: 14px;
+  image-rendering: pixelated;
+  opacity: 0.7;
+  cursor: pointer;
+}
+.page-arrow.disabled { opacity: 0.15; cursor: default; }
 .icon.soon { cursor: help; }
 @keyframes blink { 50% { opacity: 0.18; } }
 
@@ -466,6 +499,56 @@ body {
 .swatches i { width: 18px; height: 18px; border: 2px solid var(--plum); margin-left: -2px; }
 .outfit-tip { margin: 0; padding: 8px 12px; font-family: "Tiny5", "VT323", monospace; font-size: 13px; color: var(--deep-pink); border-top: 4px solid var(--deep-pink); }
 
+/* ---------- Mirror mode ---------- */
+.mirror-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #1a1030;
+}
+.mirror-stage video, .mirror-stage img { width: 100%; height: 100%; object-fit: contain; }
+.mirror-stage video.selfie { transform: scaleX(-1); } /* front camera behaves like a mirror */
+.mirror-note {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  margin: 0;
+  padding: 6px 8px;
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 14px;
+  color: var(--plum);
+  background: #fff;
+  border: 3px solid var(--deep-pink);
+  box-shadow: 3px 3px 0 var(--pink-3);
+}
+.mirror-controls {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  border-top: 4px solid var(--deep-pink);
+  background: #fff;
+}
+.mirror-controls button, .mirror-file {
+  padding: 8px 12px;
+  font-family: "Press Start 2P", monospace;
+  font-size: 9px;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 3px solid var(--deep-pink);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+.mirror-controls .primary { color: #fff; background: var(--hot-pink); }
+.mirror-controls [hidden] { display: none; }
+.mirror-file input { display: none; }
+.msg img.thumb { display: block; max-width: 120px; max-height: 160px; margin-bottom: 4px; border: 2px solid var(--plum); }
+
 /* On narrow screens (phones) the windows open as a panel over the page, so nothing needs a
    page scroll to be reached. */
 @media (max-width: 760px) {
@@ -505,5 +588,5 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .device-wrap.transforming, .device-wrap.transforming .device::after { animation: none; }
-  .device::after, .icon.lit { animation: none; }
+  .device::after, .attention-led.lit canvas { animation: none; }
 }
