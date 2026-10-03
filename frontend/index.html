@@ -12,6 +12,7 @@
 </head>
 <body>
   <main class="stage">
+    <div class="side-stack">
     <!-- Spotify "now playing" as a retro walkman (hidden until Spotify is connected) -->
     <aside class="walkman" id="walkman" hidden aria-label="Now playing on Spotify">
       <div class="walkman-top">
@@ -42,6 +43,16 @@
       </div>
       </div></div>
     </aside>
+
+    <!-- TAMA♥CLOCK: pixel clock, analog or digital, dressed in the current theme -->
+    <aside class="clock" id="clock" aria-label="Clock">
+      <div class="walkman-top">
+        <span class="walkman-brand">TAMA♥CLOCK</span>
+        <button type="button" class="clock-mode" id="clock-mode">DIGI</button>
+      </div>
+      <canvas class="clock-face" id="clock-face" width="56" height="56" role="img"></canvas>
+    </aside>
+    </div>
 
     <div class="device-wrap">
       <div class="keyring" aria-hidden="true"></div>
@@ -228,5 +239,6 @@
   <script src="app.js"></script>
   <script src="library.js"></script>
   <script src="memory.js"></script>
+  <script src="clock.js"></script>
 </body>
 </html>

@@ -1377,3 +1377,45 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .walkman-top, .walkman-body { transition: none; }
 }
+
+/* ---------- TAMA♥CLOCK (shares the walkman's shell look) ---------- */
+.side-stack { display: flex; flex-direction: column; align-items: center; gap: 28px; }
+.clock {
+  width: 220px;
+  padding: 10px 12px 12px;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.5) 0 1px, transparent 1.2px) 0 0 / 9px 9px,
+    var(--theme-2);
+  border: 4px solid var(--deep-pink);
+  box-shadow: 8px 8px 0 var(--deep-pink), inset 0 -6px 0 rgba(0, 0, 0, 0.15);
+  clip-path: var(--notch);
+  color: #fff;
+  animation: win-open 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.25);
+}
+.clock-face {
+  display: block;
+  width: 168px; /* 3 screen pixels per clock pixel */
+  height: 168px;
+  margin: 0 auto;
+  image-rendering: pixelated;
+  background: var(--pink-1);
+  border: 3px solid var(--deep-pink);
+  box-shadow: inset 3px 3px 0 rgba(0, 0, 0, 0.12);
+}
+.clock-face.flip { animation: clock-flip 0.18s steps(4); }
+@keyframes clock-flip { 50% { scale: 1 0.1; } }
+.clock-mode {
+  height: 18px;
+  padding: 0 4px;
+  font: 7px/1 "Press Start 2P", monospace;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 2px solid var(--deep-pink);
+  cursor: pointer;
+}
+@media (max-width: 760px) {
+  .side-stack { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .clock, .clock-face.flip { animation: none; }
+}
