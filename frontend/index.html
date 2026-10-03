@@ -87,7 +87,7 @@
       <div class="chat-log" id="chat-log" aria-live="polite"></div>
       <form class="chat-form" id="chat-form">
         <button type="button" class="chat-mic" id="chat-mic" aria-label="Talk">MIC</button>
-        <label class="chat-attach" title="Add a .txt, .md, .docx or .pdf to your library">+<input type="file" id="chat-file" accept=".txt,.md,.markdown,.pdf,.docx" hidden></label>
+        <label class="chat-attach" title="Add a .txt, .md, .docx or .pdf to your library">+<input type="file" id="chat-file" accept=".txt,.md,.markdown,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden></label>
         <input id="chat-input" type="text" maxlength="4000" autocomplete="off" placeholder="Type or press MIC...">
         <button type="submit" class="chat-send">SEND</button>
       </form>
@@ -169,7 +169,7 @@
         </form>
         <button type="button" class="lib-btn" id="lib-new-book">+ BOOK</button>
         <label class="lib-btn lib-import" title="Add a .txt, .md, .docx or .pdf file">
-          IMPORT<input type="file" id="lib-import" accept=".txt,.md,.markdown,.pdf,.docx" hidden>
+          IMPORT<input type="file" id="lib-import" accept=".txt,.md,.markdown,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
         </label>
       </div>
       <div class="lib-body" id="lib-body"></div>
