@@ -23,6 +23,11 @@ def _today() -> str:
     return datetime.now(TIMEZONE).date().isoformat()
 
 
+def is_today(day: str) -> bool:
+    """Whether a YYYY-MM-DD date is today (local time)."""
+    return day == _today()
+
+
 def save(summary: str, pieces: List[str], colors: List[str], style: str) -> Dict[str, Any]:
     """Store a new suggestion for today, replacing any earlier one."""
     suggestion = {

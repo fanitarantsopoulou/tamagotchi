@@ -31,6 +31,7 @@
             <div class="icons" id="icons-top"></div>
             <div class="screen">
               <canvas id="screen" width="48" height="32"></canvas>
+              <div class="lcd-weather" id="lcd-weather" hidden><canvas width="5" height="5"></canvas><span></span></div>
               <div class="overlay" id="overlay" hidden></div>
               <div class="bubble" id="bubble" hidden></div>
             </div>
@@ -89,6 +90,21 @@
         </label>
         <button type="button" id="mirror-retake" hidden>RETAKE</button>
         <button type="button" id="mirror-send" class="primary" hidden>SEND</button>
+      </div>
+    </section>
+    <section class="window weather" id="weather" hidden aria-label="Weather">
+      <header class="chat-title">
+        <span>♥ WEATHER.EXE</span>
+        <button class="chat-close" id="weather-close" aria-label="Close weather">×</button>
+      </header>
+      <form class="weather-search" id="weather-search">
+        <input id="weather-city" type="text" placeholder="Search a city..." autocomplete="off" maxlength="60">
+        <button type="submit">GO</button>
+        <button type="button" id="weather-home" title="Back to my city">HOME</button>
+      </form>
+      <div class="weather-body" id="weather-body"></div>
+      <div class="weather-actions">
+        <button type="button" id="weather-wear">♥ WHAT SHOULD I WEAR?</button>
       </div>
     </section>
   </main>

@@ -11,6 +11,7 @@ from anthropic import beta_tool
 from dotenv import load_dotenv
 
 import closet
+import context_providers
 import outfit_of_day
 import gmail_reader
 import notion_reader
@@ -52,10 +53,10 @@ Your bestie's makeup bag and closet (the ONLY items your bestie owns; #N is the 
 Styling rules:
 - When asked what makeup or outfit to wear, pick specific items from the list above, by brand \
 and shade, and say why they go together or suit the day.
-- Never invent items that aren't on the list.
+- Never invent items that aren't on the list, and never show the #ids to your bestie (they're only for tools).
 - Never claim to know what color a shade number is unless the list says so. Otherwise refer to \
 it by its number (e.g. "το KIKO 3D Hydra 19").
-- Whenever you suggest an outfit (clothes) for today, also call save_outfit_suggestion with it, \
+- Whenever you suggest an outfit (clothes), also call save_outfit_suggestion with it and the day it's for, \
 so you can check it later when your bestie shows you a Mirror photo. Don't mention the saving.
 - Eyeshadow palette colors aren't listed, so suggest a color family ("κάτι πράσινο από την \
 Revolution παλέτα") rather than a specific shade name.
@@ -147,7 +148,7 @@ def _system_prompt(pet: Dict[str, Any]) -> str:
         sleep_line="You are asleep and grumpy about being woken up." if pet["sleeping"] else "You are awake.",
         now=datetime.now(TIMEZONE).strftime("%A, %d %B %Y, %H:%M"),
         closet=closet.as_text(),
-        integrations=_integrations_prompt(),
+        integrations=_integrations_prompt() + context_providers.prompt(),
     )
 
 
@@ -227,15 +228,19 @@ def _outfit_tools() -> list:
     """Remember today's outfit suggestion for Mirror mode."""
 
     @beta_tool
-    def save_outfit_suggestion(summary: str, pieces: List[str], colors: List[str], style: str) -> str:
+    def save_outfit_suggestion(date: str, summary: str, pieces: List[str], colors: List[str], style: str) -> str:
         """Save the outfit you just suggested as today's suggestion (the latest one replaces earlier ones).
+        Only today's outfit is remembered; suggestions for other days are ignored.
 
         Args:
+            date: The day the outfit is for, as YYYY-MM-DD.
             summary: One sentence describing the outfit, e.g. "Black plain sweatshirt with black flare jeans".
             pieces: Each clothing piece, e.g. ["black plain sweatshirt", "black flare jeans"].
             colors: The main colors, e.g. ["black"].
             style: The overall style in a few words, e.g. "casual chic".
         """
+        if not outfit_of_day.is_today(date):
+            return "Not saved: only today's outfit is remembered."
         outfit_of_day.save(summary, pieces, colors, style)
         return "Saved as today's suggestion."
 
@@ -327,7 +332,8 @@ def reply(history: List[Dict[str, str]], pet: Dict[str, Any]) -> Dict[str, Any]:
             max_tokens=1024,  # replies are 1-3 sentences
             system=_system_prompt(pet),
             messages=messages,
-            tools=_closet_tools(changes) + _outfit_tools() + _notion_tools(changes) + _gmail_tools(),
+            tools=_closet_tools(changes) + _outfit_tools() + _notion_tools(changes) + _gmail_tools()
+            + context_providers.tools(),
             max_iterations=MAX_TOOL_ROUNDS,
         )
         # The pet may talk before a tool call and/or after it, so keep text from every round.
