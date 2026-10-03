@@ -88,9 +88,11 @@ const S = {
   ],
   z: ["###", ".#.", "###"],
   skull: [".###.", "#.#.#", "#####", ".#.#."],
-  // the pet's open book while it studies with you (two frames: a page turning)
+  // the pet's open book while it studies with you, and the frames of a page turning over
   book: [".###.###.", "#...#...#", "#.#.#.#.#", "#...#...#", "#########"],
-  bookTurn: [".###..##.", "#...##..#", "#.#.#.#.#", "#...#...#", "#########"],
+  bookTurn1: [".###.##..", "#...##.#.", "#.#.#.#.#", "#...#...#", "#########"], // right page lifts
+  bookTurn2: [".###.#...", "#...###..", "#.#.##..#", "#...#...#", "#########"], // standing up
+  bookTurn3: [".##..###.", "#.##....#", "#.#.#.#.#", "#...#...#", "#########"], // lands on the left
   thought: ["#......", ".......", ".#.....", "...###.", "..#####", "...###."], // dots + rice ball
   stink: ["#.", ".#", "#."],
   question: [".##.", "#..#", "..#.", ".#..", "....", ".#.."],
@@ -1684,15 +1686,19 @@ function drawMoodEffects(mood, stage, x, y, w, now, frame) {
 }
 
 // The pet studying: it nods along every few seconds, holds an open book in front of it (a page
-// turns now and then) and a "..." thought blinks above its head.
+// turns every 5 seconds) and a "..." thought blinks above its head.
+const PAGE_TURN_MS = 5000;
+
 function drawReading(rows, x, y, w, now) {
   const nod = Math.floor(now / 1800) % 3 === 2 ? 1 : 0;
   drawSprite(ctx, rows, x, y + nod);
   const bx = x + Math.round(w / 2) - 4;
   const by = GROUND - S.book.length;
   ctx.clearRect(bx - 1, by - 1, S.book[0].length + 2, S.book.length + 1); // the book covers the body
-  const turning = Math.floor(now / 400) % 12 === 0;
-  drawSprite(ctx, turning ? S.bookTurn : S.book, bx, by);
+  // a page turns every 5 seconds: three quick frames, then the book lies open again
+  const t = now % PAGE_TURN_MS;
+  const page = t < 150 ? S.bookTurn1 : t < 300 ? S.bookTurn2 : t < 450 ? S.bookTurn3 : S.book;
+  drawSprite(ctx, page, bx, by);
   const dots = Math.floor(now / 600) % 4; // . .. ... (pause)
   for (let i = 0; i < Math.min(dots, 3); i++) ctx.fillRect(x + w + 2 + i * 2, y - 2, 1, 1);
 }
