@@ -244,7 +244,10 @@
   // A round ended: cheer, then move to the next phase (it waits for START, so nothing runs unnoticed).
   function finishPhase() {
     const phase = PHASES[timer.phase];
-    if (timer.phase === "focus") timer.round += 1;
+    if (timer.phase === "focus") {
+      timer.round += 1;
+      confetti(); // the lamp switches off at the same time (syncControls below)
+    }
     let next = "focus";
     if (timer.phase === "focus") next = timer.round >= ROUNDS ? "long" : "short";
     if (timer.phase === "long") timer.round = 0;
@@ -263,7 +266,7 @@
 
   // The tab title blinks until you come back to the page.
   function flashTitle(message) {
-    const original = document.title;
+    const original = pageTitle;
     let on = false;
     const id = setInterval(() => (document.title = (on = !on) ? `⏰ ${message}` : original), 800);
     const stop = () => {
@@ -275,7 +278,61 @@
     if (!document.hidden) setTimeout(stop, 4000);
   }
 
+  // ---------- the page during focus: desk lamp, countdown in the tab title, confetti at the end ----------
+  const lamp = document.createElement("div");
+  lamp.className = "focus-lamp";
+  lamp.setAttribute("aria-hidden", "true");
+  document.body.append(lamp);
+  const deviceWrap = document.querySelector(".device-wrap");
+  const pageTitle = document.title;
+
+  // The lamp's light is centered on the device (recomputed on scroll / resize while it's on).
+  function aimLamp() {
+    const r = deviceWrap.getBoundingClientRect();
+    lamp.style.setProperty("--lamp-x", `${r.left + r.width / 2}px`);
+    lamp.style.setProperty("--lamp-y", `${r.top + r.height / 2}px`);
+  }
+  window.addEventListener("resize", () => document.body.classList.contains("focus-mode") && aimLamp());
+  window.addEventListener("scroll", () => document.body.classList.contains("focus-mode") && aimLamp(), { passive: true });
+
+  function syncPage() {
+    const focusing = timer.running && timer.phase === "focus";
+    if (focusing) aimLamp();
+    document.body.classList.toggle("focus-mode", focusing);
+    updateTitle();
+  }
+
+  function updateTitle() {
+    if (!timer.running) {
+      if (document.title.startsWith("🍅") || document.title.startsWith("☕")) document.title = pageTitle;
+      return;
+    }
+    const secs = Math.ceil(leftMs() / 1000);
+    const mmss = `${String(Math.floor(secs / 60)).padStart(2, "0")}:${String(secs % 60).padStart(2, "0")}`;
+    document.title = timer.phase === "focus" ? `🍅 ${mmss} · FOCUS` : `☕ ${mmss} · BREAK`;
+  }
+
+  // Pixel confetti raining over the page, in the theme's colors.
+  function confetti() {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const layer = document.createElement("div");
+    layer.className = "confetti";
+    const colors = ["var(--theme-1)", "var(--theme-2)", "var(--theme-3)", "#fff", "#ffe066"];
+    for (let i = 0; i < 70; i++) {
+      const bit = document.createElement("i");
+      bit.style.left = `${Math.random() * 100}%`;
+      bit.style.background = colors[i % colors.length];
+      bit.style.setProperty("--drift", `${(Math.random() - 0.5) * 160}px`);
+      bit.style.animationDelay = `${Math.random() * 0.6}s`;
+      bit.style.animationDuration = `${1.6 + Math.random() * 1.2}s`;
+      layer.append(bit);
+    }
+    document.body.append(layer);
+    setTimeout(() => layer.remove(), 3600);
+  }
+
   function syncControls() {
+    syncPage();
     startBtn.textContent = timer.running ? "PAUSE" : leftMs() < phaseMs() ? "GO ON" : "START";
     focusBtn.classList.toggle("running", timer.running);
     controls.querySelectorAll("[data-adjust], [data-preset]").forEach((b) => (b.disabled = timer.running));
@@ -327,6 +384,7 @@
   function render() {
     const now = new Date();
     if (timer.running && leftMs() <= 0) finishPhase();
+    updateTitle();
     const col = colors();
     g.clearRect(0, 0, SIZE, SIZE);
     if (focusView) drawFocus(col);

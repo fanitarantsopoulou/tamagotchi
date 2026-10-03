@@ -1442,3 +1442,43 @@ body {
 .clock-presets { display: flex; justify-content: center; gap: 3px; width: 100%; }
 .clock-controls .clock-presets button { min-width: 0; flex: 1; height: 20px; font-size: 7px; }
 .clock-controls .clock-presets button.on { color: #fff; background: var(--deep-pink); }
+
+/* ---------- focus mode: a desk lamp over the page ----------
+   The room darkens (the lamp layer sits between the wallpaper and the page), the wallpaper
+   softens, and a warm light falls on the device and the clock. Everything else fades back
+   until you point at it. */
+.focus-lamp {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle 420px at var(--lamp-x, 50%) var(--lamp-y, 50%),
+    rgba(255, 214, 140, 0.18), rgba(40, 24, 56, 0.55) 70%, rgba(20, 12, 32, 0.72));
+  transition: opacity 1.2s ease;
+}
+.focus-mode .focus-lamp { opacity: 1; }
+.wallpaper { transition: opacity 1.2s ease, filter 1.2s ease; }
+.focus-mode .wallpaper { filter: blur(2px) saturate(0.7); }
+.device-wrap, .clock, .walkman, .hint { transition: filter 1.2s ease, opacity 0.6s ease; }
+.focus-mode .device-wrap { filter: drop-shadow(8px 8px 0 var(--deep-pink)) drop-shadow(0 0 32px rgba(255, 214, 140, 0.6)); }
+.focus-mode .clock { filter: drop-shadow(0 0 24px rgba(255, 214, 140, 0.5)); }
+.focus-mode .walkman:not(:hover):not(:focus-within),
+.focus-mode .hint:not(:hover) { opacity: 0.3; }
+
+/* finale: pixel confetti falling over the whole page */
+.confetti { position: fixed; inset: 0; z-index: 60; pointer-events: none; overflow: hidden; }
+.confetti i {
+  position: absolute;
+  top: -12px;
+  width: 6px;
+  height: 6px;
+  animation: confetti-fall 2s cubic-bezier(0.3, 0.6, 0.6, 1) forwards;
+}
+.confetti i:nth-child(3n) { width: 4px; height: 8px; }
+@keyframes confetti-fall {
+  to { translate: var(--drift) 105vh; rotate: 540deg; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .focus-lamp, .wallpaper, .device-wrap, .clock, .walkman, .hint { transition: none; }
+}
