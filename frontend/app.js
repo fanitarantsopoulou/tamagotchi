@@ -147,6 +147,7 @@ const ICON_ART = {
   clean: ["..##....", ".###....", "####....", "..#....#", ".#######", "########", ".######.", "..####.."],
   stats: ["........", "......#.", "......#.", "....#.#.", "....#.#.", "..#.#.#.", "..#.#.#.", "########"],
   chat: [".######.", "#......#", "#.#.#..#", "#......#", ".######.", "..#.....", ".#......", "........"],
+  outfit: ["...##...", "..#..#..", ".....#..", "....#...", "...##...", ".##..##.", "#......#", "########"],
   calendar: [".#....#.", "########", "########", "#......#", "#.##.#.#", "#......#", "#.#.##.#", "########"],
   attention: ["...##...", "..####..", "..####..", "..####..", "...##...", "........", "...##...", "...##..."],
 };
@@ -158,6 +159,7 @@ const ICONS = [
   { id: "clean", row: "top" },
   { id: "stats", row: "bottom" },
   { id: "chat", row: "bottom" },
+  { id: "outfit", row: "bottom" },
   { id: "calendar", row: "bottom", soon: true },
   { id: "attention", row: "bottom", passive: true },
 ];
@@ -226,6 +228,7 @@ const state = {
   x: 20,
   dir: 1,
   mood: null, // last mood we reacted to
+  transform: null, // { start } while a new look is being applied
 };
 
 async function api(path, options = {}) {
@@ -271,6 +274,7 @@ const SOUNDS = {
   tired: [[1568, 220], [0, 80], [1397, 380]],
   sick: [[2093, 60], [1976, 60], [2093, 60], [1976, 60], [2093, 60], [1976, 160]],
   sleeping: [[2637, 260], [2093, 260], [1568, 420]],
+  transform: [[1568, 40], [2093, 40], [2637, 40], [3136, 40], [4186, 40], [0, 40], [1568, 40], [2093, 40], [2637, 40], [3136, 40], [4186, 40], [5274, 160]],
   hatch: [[2093, 80], [2637, 80], [3136, 80], [2637, 80], [3136, 80], [4186, 240]],
 };
 
@@ -318,6 +322,7 @@ async function runIcon(icon) {
   if (icon.soon) return say("SOON!");
   if (icon.id === "stats") return showStats();
   if (icon.id === "chat") return openChat();
+  if (icon.id === "outfit") return openOutfits();
 
   try {
     const { pet, message } = await api(`/pet/${ACTION_FOR[icon.id]}`, { method: "POST" });
@@ -394,8 +399,11 @@ async function press(btn) {
 document.querySelectorAll("[data-btn]").forEach((el) => el.addEventListener("click", () => press(el.dataset.btn)));
 document.addEventListener("keydown", (e) => {
   // While typing in the chat, keys belong to the input (Esc still closes the chat).
-  if (e.target.closest?.(".chat")) {
-    if (e.key === "Escape") closeChat();
+  if (e.target.closest?.(".chat, .window")) {
+    if (e.key === "Escape") {
+      closeChat();
+      closeOutfits();
+    }
     return;
   }
   const map = { ArrowLeft: "A", ArrowRight: "A", a: "A", Enter: "B", " ": "B", b: "B", Escape: "C", c: "C" };
@@ -426,6 +434,7 @@ function addMessage(kind, text) {
 
 async function openChat() {
   unlockSpeech();
+  closeOutfits();
   chatEl.hidden = false;
   chatInput.focus();
   if (chatHistory.length) return;
@@ -453,7 +462,12 @@ async function sendMessage(text) {
   const typing = addMessage("pet typing", "...");
   sendBtn.disabled = true;
   try {
-    const { message, changes } = await api("/chat", { method: "POST", body: JSON.stringify({ messages: chatHistory }) });
+    const { message, changes, theme } = await api("/chat", { method: "POST", body: JSON.stringify({ messages: chatHistory }) });
+    if (theme) {
+      // The backend recognized a theme request: play the transformation, then show the reply.
+      typing.textContent = "✨ ...";
+      await transformTo(Promise.resolve(theme));
+    }
     chatHistory.push({ role: "assistant", content: message });
     typing.remove();
     addMessage("pet", message);
@@ -480,6 +494,116 @@ chatForm.addEventListener("submit", (e) => {
 });
 
 document.getElementById("chat-close").addEventListener("click", closeChat);
+
+// ---------- new look: outfit picker + "transformation" effect ----------
+const TRANSFORM_MS = 1300;
+const outfitsEl = document.getElementById("outfits");
+const outfitList = document.getElementById("outfit-list");
+const deviceWrap = document.querySelector(".device-wrap");
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Pixel sparkles flying out of the device (pure CSS animation, removed afterwards).
+function burstSparkles() {
+  const burst = document.createElement("div");
+  burst.className = "burst";
+  for (let i = 0; i < 14; i++) {
+    const s = document.createElement("i");
+    s.className = "px sparkle";
+    const angle = (i / 14) * Math.PI * 2;
+    const dist = 140 + Math.random() * 80;
+    s.style.left = "50%";
+    s.style.top = "45%";
+    s.style.setProperty("--dx", `${Math.cos(angle) * dist}px`);
+    s.style.setProperty("--dy", `${Math.sin(angle) * dist}px`);
+    burst.appendChild(s);
+  }
+  deviceWrap.appendChild(burst);
+  setTimeout(() => burst.remove(), 1000);
+}
+
+// Plays the transformation (shake, shine, sparkles, LCD swirl, jingle) while `themePromise`
+// resolves, then morphs the colors into the new theme. Starts instantly, so the user sees
+// something happen from the moment they ask.
+async function transformTo(themePromise) {
+  if (state.transform) return;
+  state.transform = { start: performance.now() };
+  deviceWrap.classList.add("transforming");
+  burstSparkles();
+  play("transform");
+  say("MAGIC...", TRANSFORM_MS);
+  try {
+    const [theme] = await Promise.all([themePromise, sleep(TRANSFORM_MS)]);
+    Themes.apply(theme); // colors + wallpaper morph smoothly from here (CSS transitions)
+    play("happy");
+    say("NEW LOOK!");
+  } catch (e) {
+    play("error");
+    say("OOPS");
+  } finally {
+    deviceWrap.classList.remove("transforming");
+    state.transform = null;
+  }
+}
+
+// Draws the LCD part of the transformation: a few inverse flashes, then sparkles spiralling
+// in toward the pet.
+function drawTransform(now, cx, cy) {
+  const t = (now - state.transform.start) / TRANSFORM_MS;
+  if (t < 0.3) {
+    if (Math.floor(now / 90) % 2) ctx.fillRect(0, 0, W, H);
+    return;
+  }
+  const radius = 3 + 16 * (1 - t);
+  for (let i = 0; i < 8; i++) {
+    const a = now / 110 + (i * Math.PI) / 4;
+    const sx = Math.round(cx + Math.cos(a) * radius);
+    const sy = Math.round(cy + Math.sin(a) * radius * 0.7);
+    ctx.fillRect(sx, sy, 1, 1);
+    if (i % 2) ctx.fillRect(sx - 1, sy, 3, 1); // every other sparkle is a little cross
+    if (i % 2) ctx.fillRect(sx, sy - 1, 1, 3);
+  }
+}
+
+async function openOutfits() {
+  closeChat();
+  outfitsEl.hidden = false;
+  try {
+    const [presets, current] = await Promise.all([api("/theme/presets"), api("/theme")]);
+    outfitList.innerHTML = "";
+    for (const preset of presets) {
+      const btn = document.createElement("button");
+      btn.className = "outfit" + (preset.motif === current.motif ? " active" : "");
+      const swatches = document.createElement("span");
+      swatches.className = "swatches";
+      preset.colors.forEach((c) => {
+        const sw = document.createElement("i");
+        sw.style.background = c;
+        swatches.appendChild(sw);
+      });
+      const label = document.createElement("span");
+      label.textContent = preset.label;
+      btn.append(swatches, label);
+      btn.addEventListener("click", () => pickOutfit(preset, btn));
+      outfitList.appendChild(btn);
+    }
+  } catch (e) {
+    outfitList.textContent = e.message;
+  }
+}
+
+function closeOutfits() {
+  outfitsEl.hidden = true;
+}
+
+function pickOutfit(preset, btn) {
+  if (state.transform) return;
+  unlockSpeech();
+  outfitList.querySelectorAll(".outfit").forEach((el) => el.classList.toggle("active", el === btn));
+  // save and transform in parallel: the effect starts on the click, not after the request
+  transformTo(api("/theme", { method: "PUT", body: JSON.stringify({ motif: preset.motif }) }));
+}
+
+document.getElementById("outfits-close").addEventListener("click", closeOutfits);
 
 // ---------- voice: speech-to-text in, text-to-speech out (all in the browser) ----------
 const VOICE_LANG = "el-GR";
@@ -563,7 +687,7 @@ function startListening() {
     chatInput.value = Array.from(e.results).map((r) => r[0].transcript).join("");
   };
   recognition.onerror = (e) => {
-    if (e.error === "not-allowed") addMessage("error", "Δώσε άδεια για το μικρόφωνο στον browser.");
+    if (e.error === "not-allowed") addMessage("error", "Please allow microphone access in your browser.");
     else if (e.error !== "no-speech" && e.error !== "aborted") addMessage("error", `Mic error: ${e.error}`);
   };
   recognition.onend = () => {
@@ -631,7 +755,7 @@ function render(now) {
 
   const sleeping = p.alive && p.sleeping;
   lcd.classList.toggle("lights-off", sleeping);
-  ctx.fillStyle = sleeping ? cssVar("--lcd-bg") : cssVar("--lcd-px");
+  ctx.fillStyle = sleeping ? cssVar("--lcd-bg") : cssVar("--pet-color");
   const frame = Math.floor(now / 500) % 2;
 
   if (!p.alive) {
@@ -642,6 +766,8 @@ function render(now) {
     drawSprite(ctx, S.egg, 19 + (frame ? 1 : 0), GROUND - S.egg.length);
     return;
   }
+
+  if (!sleeping) Themes.drawLcdEffect(ctx, now, W, H);
 
   // poops, stacked on the right, with stink lines
   for (let i = 0; i < p.poops; i++) {
@@ -683,6 +809,12 @@ function render(now) {
     ctx.fillRect(lineX, 0, 1, H);
   }
 
+  if (state.transform) {
+    drawTransform(now, x + w / 2, y + rows.length / 2);
+    drawSprite(ctx, rows, x, y, { flip: Math.floor(now / 120) % 2 === 0 }); // spinning
+    return;
+  }
+
   drawSprite(ctx, rows, x, y, { flip: state.dir < 0 && !sleeping });
 
   if (sleeping) {
@@ -695,6 +827,7 @@ function render(now) {
 }
 
 // ---------- boot ----------
+api("/theme").then(Themes.apply).catch(() => Themes.apply({ motif: "default", colors: ["#ffb3d4", "#e0408f", "#9c1f5f"] }));
 buildIcons();
 refresh();
 setInterval(refresh, 5000);
