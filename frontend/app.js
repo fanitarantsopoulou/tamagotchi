@@ -180,7 +180,7 @@ const ICONS = [
   { id: "outfit", row: "bottom" },
   { id: "mirror", row: "bottom" },
   { id: "weather", row: "bottom" },
-  { id: "calendar", row: "bottom", soon: true },
+  { id: "calendar", row: "bottom" },
 ];
 const SELECTABLE = ICONS; // every icon is a function you can select
 
@@ -398,6 +398,7 @@ async function runIcon(icon) {
   if (icon.id === "outfit") return openOutfits();
   if (icon.id === "mirror") return openMirror();
   if (icon.id === "weather") return openWeather();
+  if (icon.id === "calendar") return openCalendar();
 
   try {
     const { pet, message } = await api(`/pet/${ACTION_FOR[icon.id]}`, { method: "POST" });
@@ -480,6 +481,7 @@ document.addEventListener("keydown", (e) => {
       closeOutfits();
       closeMirror();
       closeWeather();
+      closeCalendar();
     }
     return;
   }
@@ -514,6 +516,7 @@ async function openChat() {
   closeOutfits();
   closeMirror();
   closeWeather();
+  closeCalendar();
   chatEl.hidden = false;
   chatInput.focus();
   if (chatHistory.length) return;
@@ -647,6 +650,7 @@ async function openOutfits() {
   closeChat();
   closeMirror();
   closeWeather();
+  closeCalendar();
   outfitsEl.hidden = false;
   try {
     const [presets, current] = await Promise.all([api("/theme/presets"), api("/theme")]);
@@ -794,6 +798,7 @@ async function openMirror() {
   closeChat();
   closeOutfits();
   closeWeather();
+  closeCalendar();
   mirrorEl.hidden = false;
   mirror.useFile = false;
   mirror.photo = null;
@@ -979,6 +984,7 @@ async function openWeather() {
   closeChat();
   closeOutfits();
   closeMirror();
+  closeCalendar();
   weatherEl.hidden = false;
   await loadWeather(wx.city);
 }
@@ -1008,6 +1014,74 @@ document.getElementById("weather-home").addEventListener("click", () => {
 });
 document.getElementById("weather-wear").addEventListener("click", askWhatToWear);
 document.getElementById("weather-close").addEventListener("click", closeWeather);
+
+// ---------- Calendar: CALENDAR.EXE (read-only Google Calendar agenda) ----------
+const calendarEl = document.getElementById("calendar");
+const calendarBody = document.getElementById("calendar-body");
+const calendarWear = document.getElementById("calendar-wear");
+let calendarPick = null; // { day, event } selected in the list
+
+function eventTime(e) {
+  return e.all_day ? "all day" : `${e.start}–${e.end}`;
+}
+
+function renderCalendar(days) {
+  calendarBody.replaceChildren();
+  days.forEach((day, i) => {
+    const box = el("div", "cal-day");
+    box.append(el("h3", "", i === 0 ? `Today · ${dayLabel(day.date, { weekday: "short", day: "numeric", month: "short" })}` : dayLabel(day.date, { weekday: "long", day: "numeric", month: "short" })));
+    if (!day.events.length) box.append(el("div", "cal-empty", "Nothing planned"));
+    day.events.forEach((event) => {
+      const btn = el("button", "cal-event");
+      const what = el("span", "", event.title);
+      if (event.location) what.append(el("span", "cal-where", event.location));
+      btn.append(el("span", "cal-time", eventTime(event)), what);
+      btn.addEventListener("click", () => {
+        calendarBody.querySelectorAll(".cal-event").forEach((b) => b.classList.toggle("active", b === btn));
+        calendarPick = { day, event };
+        calendarWear.disabled = false;
+      });
+      box.append(btn);
+    });
+    calendarBody.append(box);
+  });
+}
+
+async function openCalendar() {
+  closeChat();
+  closeOutfits();
+  closeMirror();
+  closeWeather();
+  calendarEl.hidden = false;
+  calendarPick = null;
+  calendarWear.disabled = true;
+  calendarBody.replaceChildren(el("div", "wx-error", "Loading..."));
+  try {
+    const { days } = await api("/calendar?days=7");
+    renderCalendar(days);
+  } catch (e) {
+    calendarBody.replaceChildren(el("div", "wx-error", e.message));
+  }
+}
+
+function closeCalendar() {
+  calendarEl.hidden = true;
+}
+
+// Ask the pet what to wear for the selected event, in the chat.
+async function askWhatToWearFor() {
+  if (!calendarPick) return;
+  const { day, event } = calendarPick;
+  const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
+  const when = day.date === today ? "σήμερα" : `την ${dayLabel(day.date, { weekday: "long" }, "el-GR")} ${dayLabel(day.date, { day: "numeric", month: "numeric" }, "el-GR")}`;
+  const at = event.all_day ? "" : ` στις ${event.start}`;
+  closeCalendar();
+  await openChat();
+  sendMessage(`Τι να φορέσω για το «${event.title}» ${when}${at};`);
+}
+
+calendarWear.addEventListener("click", askWhatToWearFor);
+document.getElementById("calendar-close").addEventListener("click", closeCalendar);
 
 // ---------- voice: speech-to-text in, text-to-speech out (all in the browser) ----------
 const VOICE_LANG = "el-GR";

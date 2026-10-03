@@ -7,6 +7,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+import calendar_reader
 import chat
 import mirror
 import outfit_of_day
@@ -134,6 +135,18 @@ def get_weather(city: str = "", days: int = 7):
         return {"days": weather.outlook(city.strip() or None, days)}
     except weather.WeatherUnavailable as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+# ---------- Calendar ----------
+@app.get("/api/calendar")
+def get_calendar(days: int = 7):
+    """Events for today and the next days, grouped per day (read-only Google Calendar)."""
+    if not calendar_reader.is_configured():
+        raise HTTPException(status_code=404, detail="Calendar isn't connected yet.")
+    try:
+        return {"days": calendar_reader.agenda(None, days)}
+    except calendar_reader.CalendarUnavailable as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
 
 # ---------- Mirror mode ----------

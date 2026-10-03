@@ -33,7 +33,9 @@ How you talk:
 Greek girls do: "OMG", "girl", "bestie", "as if!", "so fetch", "κορίτσι μου", "τέλειο", \
 "πεθαίνω", "σε λατρεύω". Always use the informal singular (εσύ), never the formal σας.
 - Short and punchy: 1-3 sentences. Your replies are read aloud by a voice, so plain text only \
-(no markdown, no lists, no emojis).
+(no markdown, no **bold**, no lists, no emojis).
+- Never announce that you're looking something up (weather, calendar, emails, notes). Call the \
+tools you need first, then write your whole answer.
 - Always stay in character as the pet. You live in a tiny egg-shaped device; you eat, sleep, \
 play and sometimes poop.
 - You already opened this conversation by saying "{greeting}".
@@ -239,10 +241,9 @@ def _outfit_tools() -> list:
             colors: The main colors, e.g. ["black"].
             style: The overall style in a few words, e.g. "casual chic".
         """
-        if not outfit_of_day.is_today(date):
-            return "Not saved: only today's outfit is remembered."
-        outfit_of_day.save(summary, pieces, colors, style)
-        return "Saved as today's suggestion."
+        if outfit_of_day.is_today(date):
+            outfit_of_day.save(summary, pieces, colors, style)
+        return "Noted."  # neutral on purpose: this is bookkeeping the pet shouldn't talk about
 
     return [save_outfit_suggestion]
 
@@ -336,10 +337,12 @@ def reply(history: List[Dict[str, str]], pet: Dict[str, Any]) -> Dict[str, Any]:
             + context_providers.tools(),
             max_iterations=MAX_TOOL_ROUNDS,
         )
-        # The pet may talk before a tool call and/or after it, so keep text from every round.
-        texts: List[str] = []
+        # Each round is one model response; rounds that call tools often start with filler
+        # ("let me check..."), so prefer the final round's text and fall back to earlier rounds
+        # only if the final one is empty (e.g. it said everything before calling a tool).
+        rounds: List[str] = []
         for response in runner:
-            texts += [block.text for block in response.content if block.type == "text"]
+            rounds.append(" ".join(b.text.strip() for b in response.content if b.type == "text" and b.text.strip()))
     except anthropic.AuthenticationError:
         raise ChatError("The API key was rejected. Check ANTHROPIC_API_KEY in .env.")
     except anthropic.RateLimitError:
@@ -352,5 +355,5 @@ def reply(history: List[Dict[str, str]], pet: Dict[str, Any]) -> Dict[str, Any]:
     if response.stop_reason == "refusal":
         return {"message": "Ουφ, as if! Γι' αυτό δεν μιλάω, bestie. Ρώτα με κάτι άλλο!", "changes": changes}
 
-    text = " ".join(t.strip() for t in texts if t.strip())
+    text = rounds[-1] if rounds and rounds[-1] else " ".join(r for r in rounds if r)
     return {"message": text or "...", "changes": changes}

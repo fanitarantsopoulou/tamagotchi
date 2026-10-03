@@ -647,6 +647,29 @@ body {
 .wx-day.active { background: var(--hot-pink); color: #fff; }
 .wx-error { padding: 20px 4px; text-align: center; }
 
+/* ---------- CALENDAR.EXE (reuses the weather window's layout) ---------- */
+.cal-day { margin-bottom: 10px; }
+.cal-day h3 { margin: 0 0 4px; font-size: 14px; font-weight: normal; color: var(--deep-pink); }
+.cal-event {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 5px 6px;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  color: var(--plum);
+  background: #fff;
+  border: 2px solid var(--deep-pink);
+  cursor: pointer;
+}
+.cal-event.active { color: #fff; background: var(--hot-pink); }
+.cal-event .cal-time { flex: 0 0 74px; }
+.cal-event .cal-where { display: block; font-size: 11px; opacity: 0.8; }
+.cal-empty { font-size: 13px; opacity: 0.7; padding: 2px 0 4px; }
+.weather-actions button:disabled { opacity: 0.45; cursor: default; }
+
 /* On narrow screens (phones) the windows open as a panel over the page, so nothing needs a
    page scroll to be reached. */
 @media (max-width: 760px) {
