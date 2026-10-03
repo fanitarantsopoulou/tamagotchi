@@ -12,6 +12,7 @@ import mirror
 import outfit_of_day
 import pet
 import theme
+import weather
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
@@ -123,6 +124,16 @@ def pick_theme(body: ThemePick):
 def reset_theme():
     """Manually reset to the default look."""
     return theme.reset()
+
+
+# ---------- Weather ----------
+@app.get("/api/weather")
+def get_weather(city: str = "", days: int = 7):
+    """Today + upcoming days for a city (default city from config/settings.json)."""
+    try:
+        return {"days": weather.outlook(city.strip() or None, days)}
+    except weather.WeatherUnavailable as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # ---------- Mirror mode ----------

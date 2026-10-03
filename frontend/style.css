@@ -274,6 +274,44 @@ body {
     linear-gradient(to bottom, var(--lcd-bg-dark) 0.6px, transparent 0.6px) 0 0 / var(--px) var(--px);
 }
 
+/* small weather reading in the screen's top-right corner, with a pixel tooltip on hover */
+.lcd-weather {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  z-index: 1; /* under the stats overlay and the speech bubble */
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-family: "VT323", monospace;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--lcd-px);
+  cursor: help;
+}
+.lcd-weather[hidden] { display: none; }
+.lcd-weather canvas { width: 7px; height: 7px; image-rendering: pixelated; }
+.lcd.lights-off .lcd-weather { color: var(--lcd-bg); }
+.lcd.lights-off .lcd-weather canvas { filter: invert(1); }
+.lcd-weather::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  padding: 3px 6px;
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 11px;
+  white-space: nowrap;
+  color: #fff;
+  background: var(--plum);
+  border: 2px solid var(--lcd-px);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.lcd-weather:hover::after { opacity: 1; }
+
 .overlay {
   position: absolute;
   inset: 0;
@@ -548,6 +586,66 @@ body {
 .mirror-controls [hidden] { display: none; }
 .mirror-file input { display: none; }
 .msg img.thumb { display: block; max-width: 120px; max-height: 160px; margin-bottom: 4px; border: 2px solid var(--plum); }
+
+/* ---------- WEATHER.EXE ---------- */
+.weather-search, .weather-actions {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  background: #fff;
+}
+.weather-search { border-bottom: 4px solid var(--deep-pink); }
+.weather-actions { justify-content: center; border-top: 4px solid var(--deep-pink); }
+.weather-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 15px;
+  color: var(--plum);
+  background: var(--pink-1);
+  border: 3px solid var(--deep-pink);
+  outline: none;
+}
+.weather-search button, .weather-actions button {
+  padding: 6px 8px;
+  font-family: "Press Start 2P", monospace;
+  font-size: 8px;
+  color: #fff;
+  background: var(--hot-pink);
+  border: 3px solid var(--deep-pink);
+  cursor: pointer;
+}
+.weather-search button[type="button"] { color: var(--deep-pink); background: #fff; }
+.weather-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 12px;
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 14px;
+  color: var(--plum);
+  background: var(--pink-1);
+}
+.weather-body .wx-place { font-size: 15px; margin-bottom: 6px; }
+.weather-body .wx-now { display: flex; align-items: center; gap: 10px; }
+.weather-body .wx-now .wx-icon { width: 40px; height: 40px; }
+.weather-body .wx-temp { font-family: "Press Start 2P", monospace; font-size: 20px; }
+.weather-body .wx-sub { font-size: 13px; opacity: 0.85; }
+.wx-icon { image-rendering: pixelated; }
+.wx-parts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0; }
+.wx-parts div, .wx-day {
+  padding: 4px;
+  text-align: center;
+  background: #fff;
+  border: 2px solid var(--deep-pink);
+}
+.wx-details { font-size: 13px; margin-bottom: 10px; }
+.wx-days { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+.wx-day { flex: 0 0 56px; cursor: pointer; font: inherit; font-size: 12px; color: var(--plum); }
+.wx-day .wx-icon { width: 20px; height: 20px; display: block; margin: 2px auto; }
+.wx-day.active { background: var(--hot-pink); color: #fff; }
+.wx-error { padding: 20px 4px; text-align: center; }
 
 /* On narrow screens (phones) the windows open as a panel over the page, so nothing needs a
    page scroll to be reached. */

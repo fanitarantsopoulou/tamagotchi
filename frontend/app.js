@@ -166,6 +166,7 @@ const ICON_ART = {
   chat: [".######.", "#......#", "#.#.#..#", "#......#", ".######.", "..#.....", ".#......", "........"],
   outfit: ["...##...", "..#..#..", ".....#..", "....#...", "...##...", ".##..##.", "#......#", "########"],
   mirror: ["..####..", ".#....#.", ".#.#..#.", ".#....#.", "..####..", "...##...", "...##...", "...##..."],
+  weather: ["........", "..##....", ".####.#.", "########", "########", ".######.", "........", "........"],
   calendar: [".#....#.", "########", "########", "#......#", "#.##.#.#", "#......#", "#.#.##.#", "########"],
 };
 
@@ -178,6 +179,7 @@ const ICONS = [
   { id: "chat", row: "bottom" },
   { id: "outfit", row: "bottom" },
   { id: "mirror", row: "bottom" },
+  { id: "weather", row: "bottom" },
   { id: "calendar", row: "bottom", soon: true },
 ];
 const SELECTABLE = ICONS; // every icon is a function you can select
@@ -395,6 +397,7 @@ async function runIcon(icon) {
   if (icon.id === "chat") return openChat();
   if (icon.id === "outfit") return openOutfits();
   if (icon.id === "mirror") return openMirror();
+  if (icon.id === "weather") return openWeather();
 
   try {
     const { pet, message } = await api(`/pet/${ACTION_FOR[icon.id]}`, { method: "POST" });
@@ -476,6 +479,7 @@ document.addEventListener("keydown", (e) => {
       closeChat();
       closeOutfits();
       closeMirror();
+      closeWeather();
     }
     return;
   }
@@ -509,6 +513,7 @@ async function openChat() {
   unlockSpeech();
   closeOutfits();
   closeMirror();
+  closeWeather();
   chatEl.hidden = false;
   chatInput.focus();
   if (chatHistory.length) return;
@@ -641,6 +646,7 @@ function drawTransform(now, cx, cy) {
 async function openOutfits() {
   closeChat();
   closeMirror();
+  closeWeather();
   outfitsEl.hidden = false;
   try {
     const [presets, current] = await Promise.all([api("/theme/presets"), api("/theme")]);
@@ -787,6 +793,7 @@ async function retake() {
 async function openMirror() {
   closeChat();
   closeOutfits();
+  closeWeather();
   mirrorEl.hidden = false;
   mirror.useFile = false;
   mirror.photo = null;
@@ -865,6 +872,142 @@ mirrorFile.addEventListener("change", async () => {
   }
 });
 document.getElementById("mirror-close").addEventListener("click", closeMirror);
+
+// ---------- Weather: WEATHER.EXE window + a tiny reading on the LCD ----------
+// Data comes from /api/weather (Open-Meteo via the backend, cached there for 30 minutes).
+
+// 5x5 pixel icons, used both on the LCD and (scaled up) in the window.
+const WX_ART = {
+  clear: ["#.#.#", ".###.", "##.##", ".###.", "#.#.#"],
+  partly: ["#.#..", ".#.##", "#.###", ".####", "....."],
+  cloudy: ["..##.", ".####", "#####", "#####", "....."],
+  fog: ["#####", ".....", "#####", ".....", "#####"],
+  rain: [".###.", "#####", "#.#.#", ".#.#.", "#.#.."],
+  snow: ["#.#.#", ".#.#.", "#.#.#", ".#.#.", "#.#.#"],
+  storm: [".###.", "#####", "..#..", ".#...", "#...."],
+};
+// Home-city reading in the LCD's top-right corner (a small DOM element so it can show a tooltip),
+// refreshed every 30 minutes.
+const lcdWeather = document.getElementById("lcd-weather");
+
+async function refreshLcdWeather() {
+  try {
+    const { days } = await api("/weather?days=1");
+    const today = days[0];
+    const icon = today.now?.icon ?? today.icon;
+    const g = lcdWeather.querySelector("canvas").getContext("2d");
+    g.clearRect(0, 0, 5, 5);
+    g.fillStyle = cssVar("--lcd-px");
+    drawSprite(g, WX_ART[icon] || WX_ART.cloudy, 0, 0);
+    lcdWeather.querySelector("span").textContent = `${Math.round(today.now?.temp_c ?? today.max_c)}°`;
+    lcdWeather.dataset.tip = `Weather temperature · ${today.location.split(",")[0]}`;
+    lcdWeather.hidden = false;
+  } catch {
+    lcdWeather.hidden = true; // no reading rather than a wrong one
+  }
+}
+
+const weatherEl = document.getElementById("weather");
+const weatherBody = document.getElementById("weather-body");
+const weatherCity = document.getElementById("weather-city");
+const wx = { days: [], selected: 0, city: "" };
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function wxIcon(name, className = "wx-icon") {
+  return pixelCanvas(WX_ART[name] || WX_ART.cloudy, className);
+}
+
+const dayLabel = (iso, opts, locale = "en-GB") => new Date(`${iso}T12:00`).toLocaleDateString(locale, opts);
+const deg = (v) => (v === null || v === undefined ? "-" : `${Math.round(v)}°`);
+
+function renderWeather() {
+  const d = wx.days[wx.selected];
+  weatherBody.replaceChildren();
+  weatherBody.append(el("div", "wx-place", `${d.location} · ${dayLabel(d.date, { weekday: "short", day: "numeric", month: "short" })}`));
+
+  const now = el("div", "wx-now");
+  const info = el("div");
+  if (d.now) {
+    info.append(el("div", "wx-temp", deg(d.now.temp_c)), el("div", "wx-sub", `feels ${deg(d.now.feels_like_c)} · ${d.now.conditions} · wind ${Math.round(d.now.wind_kmh)} km/h`));
+  } else {
+    info.append(el("div", "wx-temp", `${deg(d.max_c)} / ${deg(d.min_c)}`), el("div", "wx-sub", `${d.conditions} · wind up to ${Math.round(d.max_wind_kmh)} km/h`));
+  }
+  now.append(wxIcon(d.now?.icon ?? d.icon), info);
+  weatherBody.append(now);
+
+  const parts = el("div", "wx-parts");
+  for (const [name, part] of Object.entries(d.parts_of_day)) {
+    const box = el("div");
+    box.append(el("div", "", name), el("div", "", part ? deg(part.temp_c) : "-"), el("div", "wx-sub", part ? `rain ${part.rain_chance_pct ?? 0}%` : ""));
+    parts.append(box);
+  }
+  weatherBody.append(parts);
+  weatherBody.append(el("div", "wx-details", `min ${deg(d.min_c)} · max ${deg(d.max_c)} · rain ${d.rain_chance_pct ?? 0}% · humidity ${Math.round(d.avg_humidity_pct ?? 0)}% · UV ${Math.round(d.uv_index_max ?? 0)}`));
+
+  const strip = el("div", "wx-days");
+  wx.days.forEach((day, i) => {
+    const btn = el("button", "wx-day" + (i === wx.selected ? " active" : ""));
+    btn.append(el("div", "", i === 0 ? "Today" : dayLabel(day.date, { weekday: "short" })), wxIcon(day.icon), el("div", "", `${deg(day.max_c)} ${deg(day.min_c)}`));
+    btn.addEventListener("click", () => {
+      wx.selected = i;
+      renderWeather();
+    });
+    strip.append(btn);
+  });
+  weatherBody.append(strip);
+}
+
+async function loadWeather(city) {
+  weatherBody.replaceChildren(el("div", "wx-error", "Loading..."));
+  try {
+    const query = city ? `&city=${encodeURIComponent(city)}` : "";
+    const { days } = await api(`/weather?days=7${query}`);
+    Object.assign(wx, { days, selected: 0, city });
+    renderWeather();
+  } catch {
+    weatherBody.replaceChildren(el("div", "wx-error", city ? `Couldn't find "${city}". Try another city.` : "Weather is unavailable right now."));
+  }
+}
+
+async function openWeather() {
+  closeChat();
+  closeOutfits();
+  closeMirror();
+  weatherEl.hidden = false;
+  await loadWeather(wx.city);
+}
+
+function closeWeather() {
+  weatherEl.hidden = true;
+}
+
+// Ask the pet what to wear on the selected day (and city), in the chat.
+async function askWhatToWear() {
+  const d = wx.days[wx.selected];
+  if (!d) return;
+  const when = wx.selected === 0 ? "σήμερα" : `την ${dayLabel(d.date, { weekday: "long" }, "el-GR")} ${dayLabel(d.date, { day: "numeric", month: "numeric" }, "el-GR")}`;
+  const where = wx.city ? ` στην πόλη ${d.location}` : "";
+  closeWeather();
+  await openChat();
+  sendMessage(`Τι να φορέσω ${when}${where};`);
+}
+
+document.getElementById("weather-search").addEventListener("submit", (e) => {
+  e.preventDefault();
+  loadWeather(weatherCity.value.trim());
+});
+document.getElementById("weather-home").addEventListener("click", () => {
+  weatherCity.value = "";
+  loadWeather("");
+});
+document.getElementById("weather-wear").addEventListener("click", askWhatToWear);
+document.getElementById("weather-close").addEventListener("click", closeWeather);
 
 // ---------- voice: speech-to-text in, text-to-speech out (all in the browser) ----------
 const VOICE_LANG = "el-GR";
@@ -1096,5 +1239,7 @@ function render(now) {
 api("/theme").then(Themes.apply).catch(() => Themes.apply({ motif: "default", colors: ["#ffb3d4", "#e0408f", "#9c1f5f"] }));
 buildIcons();
 refresh();
+refreshLcdWeather();
+setInterval(refreshLcdWeather, 30 * 60 * 1000);
 setInterval(refresh, 5000);
 requestAnimationFrame(render);

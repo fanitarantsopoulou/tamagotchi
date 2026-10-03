@@ -231,9 +231,9 @@
         [[3, 0], [3, 6], [0, 3], [6, 3], [0, 0], [6, 0], [0, 6], [6, 6]].forEach(([x, y]) => ctx.fillRect(x, y, 1, 1));
       }
     },
-    // a disco ball hanging in the corner, with light dots spinning around it
-    disco(ctx, now, W) {
-      const cx = W - 5, cy = 4;
+    // a disco ball hanging in the top-left corner, with light dots spinning around it
+    disco(ctx, now) {
+      const cx = 6, cy = 4;
       ctx.fillRect(cx, 0, 1, 2); // string
       ctx.fillRect(cx - 1, cy - 1, 3, 3); // ball
       for (let i = 0; i < 4; i++) {
@@ -277,7 +277,7 @@
     // little glints twinkling in the corners
     glint(ctx, now, W) {
       const on = Math.floor(now / 300) % 4;
-      const spots = [[3, 3], [W - 4, 3], [3, 12], [W - 4, 12]];
+      const spots = [[3, 3], [W - 4, 12], [3, 12], [W - 12, 20]]; // top-right is the weather reading
       const [x, y] = spots[on];
       ctx.fillRect(x - 1, y, 3, 1);
       ctx.fillRect(x, y - 1, 1, 3);
