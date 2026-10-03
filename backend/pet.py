@@ -24,6 +24,14 @@ HEALTH_REGEN = 0.2
 POOP_EVERY_MIN = 45
 MAX_POOPS = 4
 
+# Mood thresholds (stats are 0-100). See mood_of() for the priority order.
+SICK_HEALTH = 50
+SICK_POOPS = 3
+HUNGRY_BELOW = 25
+TIRED_BELOW = 20
+SAD_BELOW = 25
+HAPPY_ABOVE = 60
+
 # (age in minutes it lasts until, stage name)
 STAGES = [(1, "egg"), (60, "baby"), (24 * 60, "child"), (math.inf, "adult")]
 
@@ -102,13 +110,35 @@ def tick(pet: Dict[str, Any], now: Optional[float] = None) -> Dict[str, Any]:
     return pet
 
 
+def mood_of(pet: Dict[str, Any], stage: str) -> str:
+    """The pet's mood from its stats; the most urgent one wins when several apply."""
+    if not pet["alive"]:
+        return "dead"
+    if stage == "egg":
+        return "egg"
+    if pet["sleeping"]:
+        return "sleeping"
+    if pet["health"] < SICK_HEALTH or pet["poops"] >= SICK_POOPS:
+        return "sick"
+    if pet["hunger"] < HUNGRY_BELOW:
+        return "hungry"
+    if pet["energy"] < TIRED_BELOW:
+        return "tired"
+    if pet["happiness"] < SAD_BELOW:
+        return "sad"
+    if min(pet["hunger"], pet["happiness"], pet["energy"], pet["health"]) > HAPPY_ABOVE:
+        return "happy"
+    return "ok"
+
+
 def public_view(pet: Dict[str, Any]) -> Dict[str, Any]:
-    """Build the API response: rounded stats plus derived stage, age and attention flag."""
+    """Build the API response: rounded stats plus derived stage, age, mood and attention flag."""
     now = time.time()
     view = {k: v for k, v in pet.items() if k != "poop_timer"}
     for key in ("hunger", "happiness", "energy", "health"):
         view[key] = round(pet[key])
     view["stage"] = stage_of(pet, now)
+    view["mood"] = mood_of(pet, view["stage"])
     view["age_minutes"] = int((now - pet["born_at"]) // 60)
     view["needs_attention"] = pet["alive"] and (
         min(pet["hunger"], pet["happiness"], pet["energy"]) < 25 or pet["poops"] > 0
