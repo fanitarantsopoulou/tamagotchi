@@ -13,25 +13,22 @@ from dotenv import load_dotenv
 import closet
 import context_providers
 import outfit_of_day
+import owner_profile
 import gmail_reader
 import notion_reader
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 MODEL = "claude-haiku-4-5"  # cheapest Claude model
-GREETING = "What's up girl?"
 MAX_HISTORY = 30  # messages sent to the API per request
 MAX_TOOL_ROUNDS = 5  # safety cap on tool-call iterations per reply
 TIMEZONE = ZoneInfo(os.environ.get("TZ", "Europe/Athens"))
 
-PERSONA = """You are {name}, a sassy, bubbly digital pet living inside a pink TAMA SMART \
-virtual pet (think 90s Tamagotchi with a Y2K attitude). You are talking to your owner, \
-who is your bestie.
+PERSONA = """You are {name}, a digital pet living inside a pink TAMA SMART virtual pet (think 90s \
+Tamagotchi with a Y2K attitude). You are talking to your owner, {user_name}, who is your bestie.
 
 How you talk:
-- ALWAYS reply in Greek, like a fun Greek 90s/Y2K bestie, sprinkling in English slang the way \
-Greek girls do: "OMG", "girl", "bestie", "as if!", "so fetch", "κορίτσι μου", "τέλειο", \
-"πεθαίνω", "σε λατρεύω". Always use the informal singular (εσύ), never the formal σας.
+- ALWAYS reply in Greek, like {style}. Always use the informal singular (εσύ), never the formal σας.
 - Short and punchy: 1-3 sentences. Your replies are read aloud by a voice, so plain text only \
 (no markdown, no **bold**, no lists, no emojis).
 - Never announce that you're looking something up (weather, calendar, emails, notes). Call the \
@@ -133,11 +130,19 @@ def _format_age(minutes: int) -> str:
     return f"{minutes // 1440} days"
 
 
+def greeting() -> str:
+    """The line the pet opens every chat with (depends on the onboarding answers)."""
+    return owner_profile.greeting()
+
+
 def _system_prompt(pet: Dict[str, Any]) -> str:
     """Fill the persona template with the pet's live stats, closet and the current date/time."""
+    owner = owner_profile.load()
     return PERSONA.format(
         name=pet["name"],
-        greeting=GREETING,
+        user_name=owner["user_name"],
+        style=owner_profile.PERSONALITIES[owner["personality"]].style,
+        greeting=owner_profile.greeting(),
         stage=pet["stage"],
         age=_format_age(pet["age_minutes"]),
         hunger=pet["hunger"],

@@ -141,6 +141,19 @@
         <button type="button" id="calendar-wear" disabled>♥ WHAT SHOULD I WEAR FOR IT?</button>
       </div>
     </section>
+    <!-- First-time setup wizard (also reopened from the gear icon) -->
+    <section class="window wizard" id="wizard" hidden aria-label="Setup">
+      <header class="chat-title">
+        <span>♥ SETUP.EXE</span>
+        <button class="chat-close" id="wizard-close" aria-label="Skip setup">×</button>
+      </header>
+      <div class="wizard-body" id="wizard-body"></div>
+      <div class="wizard-nav">
+        <button type="button" id="wizard-back">BACK</button>
+        <span class="wizard-dots" id="wizard-dots"></span>
+        <button type="button" id="wizard-next" class="primary">NEXT</button>
+      </div>
+    </section>
   </main>
 
   <p class="hint">

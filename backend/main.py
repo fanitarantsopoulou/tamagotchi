@@ -12,6 +12,7 @@ import chat
 import mirror
 import outfit_of_day
 import pet
+import owner_profile
 import spotify_client
 import theme
 import weather
@@ -67,7 +68,7 @@ class ChatRequest(BaseModel):
 @app.get("/api/chat/greeting")
 def chat_greeting():
     """Return the line the pet opens every chat with."""
-    return {"message": chat.GREETING}
+    return {"message": chat.greeting()}
 
 
 @app.post("/api/chat")
@@ -126,6 +127,31 @@ def pick_theme(body: ThemePick):
 def reset_theme():
     """Manually reset to the default look."""
     return theme.reset()
+
+
+# ---------- Onboarding / profile ----------
+class OnboardingAnswers(BaseModel):
+    pet_name: str = Field(min_length=1, max_length=12)
+    user_name: str = Field(min_length=1, max_length=owner_profile.MAX_NAME)
+    personality: str
+
+
+@app.get("/api/profile")
+def get_profile():
+    """The owner's profile (has onboarding been done?) and the personalities to choose from."""
+    return {**owner_profile.load(), "pet_name": pet.get_state()["name"], "personalities": owner_profile.options()}
+
+
+@app.post("/api/onboarding")
+def finish_onboarding(body: OnboardingAnswers):
+    """Save the onboarding answers and name the pet (a dead pet is replaced by a new egg)."""
+    try:
+        saved = owner_profile.save(body.user_name, body.personality)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    current = pet.get_state()
+    new_pet = pet.rename(body.pet_name) if current["alive"] else pet.reset(body.pet_name)
+    return {"profile": saved, "pet": new_pet}
 
 
 # ---------- Weather ----------
