@@ -22,6 +22,11 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 MODEL = "claude-haiku-4-5"  # cheapest Claude model
 MAX_HISTORY = 30  # messages sent to the API per request
 MAX_TOOL_ROUNDS = 5  # safety cap on tool-call iterations per reply
+# Tools that only fetch information; text the model writes just before calling them is filler.
+LOOKUP_TOOLS = {
+    "get_weather", "get_events", "search_notion", "read_notion_page",
+    "list_recent_emails", "read_email", "now_playing", "find_playlists",
+}
 TIMEZONE = ZoneInfo(os.environ.get("TZ", "Europe/Athens"))
 
 PERSONA = """You are {name}, a digital pet living inside a pink TAMA SMART virtual pet (think 90s \
@@ -342,12 +347,16 @@ def reply(history: List[Dict[str, str]], pet: Dict[str, Any]) -> Dict[str, Any]:
             + context_providers.tools(),
             max_iterations=MAX_TOOL_ROUNDS,
         )
-        # Each round is one model response; rounds that call tools often start with filler
-        # ("let me check..."), so prefer the final round's text and fall back to earlier rounds
-        # only if the final one is empty (e.g. it said everything before calling a tool).
-        rounds: List[str] = []
+        # Each round is one model response. Text written right before a *lookup* (weather,
+        # calendar, emails...) is filler like "let me check..." and is dropped; text written before
+        # a bookkeeping/action tool (saving the outfit, editing the closet...) is often the real
+        # answer, so it's kept, followed by whatever the model adds afterwards.
+        kept: List[str] = []
         for response in runner:
-            rounds.append(" ".join(b.text.strip() for b in response.content if b.type == "text" and b.text.strip()))
+            text = " ".join(b.text.strip() for b in response.content if b.type == "text" and b.text.strip())
+            called = {b.name for b in response.content if b.type == "tool_use"}
+            if text and not (called & LOOKUP_TOOLS):
+                kept.append(text)
     except anthropic.AuthenticationError:
         raise ChatError("The API key was rejected. Check ANTHROPIC_API_KEY in .env.")
     except anthropic.RateLimitError:
@@ -360,5 +369,5 @@ def reply(history: List[Dict[str, str]], pet: Dict[str, Any]) -> Dict[str, Any]:
     if response.stop_reason == "refusal":
         return {"message": "Ουφ, as if! Γι' αυτό δεν μιλάω, bestie. Ρώτα με κάτι άλλο!", "changes": changes}
 
-    text = rounds[-1] if rounds and rounds[-1] else " ".join(r for r in rounds if r)
+    text = " ".join(kept)
     return {"message": text or "...", "changes": changes}
