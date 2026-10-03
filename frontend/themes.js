@@ -77,6 +77,12 @@
     bat: ["o.........o", "oo..o.o..oo", "o#oo###oo#o", ".o##w#w##o.", "..o.o.o.o.."],
     dumbbell: ["oo.......oo", "o#o.....o#o", "o#o+++++o#o", "o#o.....o#o", "oo.......oo"],
     bottle: ["..oo..", ".o++o.", "oooooo", "o#w##o", "o#w##o", "o####o", "o####o", "oooooo"],
+    butterfly: [".oo.....oo.", "o##o...o##o", "o#w#o.o#w#o", ".o###o###o.", "o##o.o.o##o", "o#o..o..o#o", ".o.......o."],
+    flipphone: [".oooo.", "o++++o", "o+w++o", "o++++o", "oooooo", "o#w##o", "o#o#oo", "o####o", "o#o#oo", "o####o", ".oooo."],
+    cassette: ["ooooooooooo", "o#########o", "o#o+o#o+o#o", "o#ooo#ooo#o", "o####w####o", "o#ooooooo#o", "ooooooooooo"],
+    bolt: ["...ooo", "..o#o.", ".o#o..", "o####o", "..o#o.", ".o#o..", "o#o...", "oo...."],
+    peace: ["..ooooo..", ".o##o##o.", "o###o###o", "o###o###o", "o##ooo##o", "o#o#o#o#o", "oo##o##oo", ".o##o##o.", "..ooooo.."],
+    discoball: ["....o....", "....o....", "..ooooo..", ".o#w#+#o.", "o#+#+#+#o", "o+#+#+#+o", "o#+#+#+#o", ".o+#+#+o.", "..ooooo.."],
     star: ["...o...", "..o#o..", "ooo#ooo", "o##w##o", ".o###o.", "o#o.o#o", "oo...oo"],
   };
 
@@ -105,6 +111,9 @@
     athletic: { sprites: ["dumbbell", "sneaker", "bottle"], lcd: "speed" },
     office: { sprites: ["briefcase", "laptop", "mug"], lcd: null },
     formal: { sprites: ["bowtie", "diamond", "star"], lcd: "glint" },
+    y2k: { sprites: ["butterfly", "flipphone", "sparkle"], lcd: "butterflies" },
+    seventies: { sprites: ["discoball", "flower", "peace"], lcd: "disco" },
+    eighties: { sprites: ["cassette", "bolt", "star"], lcd: "sunset" },
     halloween: { sprites: ["pumpkin", "bat", "star"], lcd: "bats" },
   };
 
@@ -180,6 +189,7 @@
   });
   let front = 0;
 
+  let fadeTimer;
   function showWallpaper(url) {
     const incoming = layers[1 - front];
     const outgoing = layers[front];
@@ -187,8 +197,11 @@
     incoming.style.zIndex = "-1";
     outgoing.style.zIndex = "-2";
     incoming.classList.add("visible"); // fades in via the CSS opacity transition
-    setTimeout(() => outgoing.classList.remove("visible"), 1300); // drop the old one once covered
     front = 1 - front;
+    // Once the new layer covers the screen, hide the other one. Cancel any earlier pending hide,
+    // otherwise two quick theme changes could hide the newest wallpaper.
+    clearTimeout(fadeTimer);
+    fadeTimer = setTimeout(() => layers[1 - front].classList.remove("visible"), 1300);
   }
 
   // ---------- LCD effects (drawn in the pet's color on the 48x32 screen) ----------
@@ -216,6 +229,34 @@
       ctx.fillRect(2, 2, 3, 3);
       if (Math.floor(now / 400) % 2) {
         [[3, 0], [3, 6], [0, 3], [6, 3], [0, 0], [6, 0], [0, 6], [6, 6]].forEach(([x, y]) => ctx.fillRect(x, y, 1, 1));
+      }
+    },
+    // a disco ball hanging in the corner, with light dots spinning around it
+    disco(ctx, now, W) {
+      const cx = W - 5, cy = 4;
+      ctx.fillRect(cx, 0, 1, 2); // string
+      ctx.fillRect(cx - 1, cy - 1, 3, 3); // ball
+      for (let i = 0; i < 4; i++) {
+        const a = now / 300 + (i * Math.PI) / 2;
+        ctx.fillRect(Math.round(cx + Math.cos(a) * 5), Math.round(cy + Math.sin(a) * 3), 1, 1);
+      }
+    },
+    // a tiny butterfly fluttering across the screen
+    butterflies(ctx, now, W) {
+      const x = Math.floor(now / 140) % (W + 6) - 3;
+      const y = 6 + Math.round(Math.sin(now / 250) * 3);
+      const open = Math.floor(now / 160) % 2;
+      ctx.fillRect(x, y, 1, 2);
+      ctx.fillRect(x - 1 - open, y - open, 1 + open, 1 + open);
+      ctx.fillRect(x + 1, y - open, 1 + open, 1 + open);
+    },
+    // a striped synthwave sunset in the corner, stripes scrolling down
+    sunset(ctx, now) {
+      const scroll = Math.floor(now / 250) % 3;
+      for (let y = 0; y < 6; y++) {
+        if ((y + scroll) % 3 === 0 && y > 1) continue; // the classic sliced stripes
+        const half = Math.round(Math.sqrt(9 - (y - 3) ** 2 + 6));
+        ctx.fillRect(5 - half, 1 + y, half * 2, 1);
       }
     },
     // speed lines whooshing past

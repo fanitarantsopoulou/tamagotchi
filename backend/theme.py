@@ -116,6 +116,24 @@ PRESETS: Dict[str, Preset] = {
         colors=["#3a3540", "#c9a227", "#121014"],
         reply="Black tie και χρυσό. So classy, darling!",
     ),
+    "y2k": Preset(
+        label="y2k",
+        when="Y2K, early 2000s, butterflies, chrome, glossy pop, flip phones",
+        colors=["#ff9de2", "#b8c0ff", "#4b3f72"],
+        reply="OMG, totally Y2K! Πεταλουδίτσες και glitter, so fetch!",
+    ),
+    "seventies": Preset(
+        label="70s",
+        when="70s, disco, hippie, groovy, flower power, bell-bottoms",
+        colors=["#f4a259", "#8cb369", "#5b3a29"],
+        reply="Groovy, baby! Disco ball και flower power, 70s vibes!",
+    ),
+    "eighties": Preset(
+        label="80s",
+        when="80s, retro, neon, synthwave, arcade, cassettes",
+        colors=["#ff2a6d", "#05d9e8", "#1a1a40"],
+        reply="Totally rad! Neon και κασέτες, back to the 80s!",
+    ),
     "halloween": Preset(
         label="halloween",
         when="Halloween, spooky, scary, witches, pumpkins",
