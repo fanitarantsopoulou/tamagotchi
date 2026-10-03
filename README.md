@@ -12,9 +12,9 @@ A pixel-perfect Tamagotchi that lives in your browser and doubles as an AI besti
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![Tailscale](https://img.shields.io/badge/Tailscale-HTTPS-242424?style=for-the-badge&logo=tailscale&logoColor=white)
 
-<img src="docs/images/app-formal-walkman.png" alt="TAMA SMART in the formal outfit, with the TAMA-WALK walkman playing music from Spotify" width="900">
+<img src="docs/images/hero-classic.jpg" alt="TAMA SMART in its classic pink outfit, next to the TAMA-WALK walkman playing Spotify" width="760">
 
-<sub><i>The app wearing the <b>formal</b> outfit: the TAMA SMART device (with the current temperature in the corner of its LCD) next to the <b>TAMA♥WALK</b> walkman showing what's playing on Spotify.</i></sub>
+<sub><i>TAMA SMART in its <b>classic</b> pink outfit: the glittery device (current temperature in the corner of the LCD, attention LED on the frame) next to the <b>TAMA♥WALK</b> walkman showing what's playing on Spotify.</i></sub>
 
 </div>
 
@@ -60,9 +60,9 @@ Everything runs in a **Docker** container on a Mac and is reachable from the pho
 - **Personalities:** sassy bestie, sweet & calm, hype coach, or witty & dry. Picked during onboarding, it changes how the pet talks.
 
 <div align="center">
-<img src="docs/images/chat-weather-aware.jpg" alt="The chat answering 'what should I wear today?' using the weather, the calendar and the closet" width="760">
+<img src="docs/images/chat-makeup-cozy.jpg" alt="The chat recommending makeup from the user's own makeup bag for a casual night out" width="760">
 
-<sub><i><b>CHAT.EXE</b> in the classic pink look: asked "what should I wear today?", the pet checks the weather (cloudy, cold morning, warmer afternoon) and the calendar (a free day), then picks layers from the user's own closet.</i></sub>
+<sub><i><b>CHAT.EXE</b> in the <b>cozy</b> outfit: asked for a makeup recommendation for a casual night out, the pet picks a long-wear lip cream and a neutral eyeshadow from the user's own makeup bag. (The app chats in Greek; this screenshot shows an English reply.)</i></sub>
 </div>
 
 ### 👗 Outfits & themes (OUTFITS.EXE)
@@ -71,9 +71,9 @@ Everything runs in a **Docker** container on a Mac and is reachable from the pho
 - Every change plays a **transformation animation**: shake, shine sweep, sparkle burst and a jingle.
 
 <div align="center">
-<img src="docs/images/outfits-picker.jpg" alt="The OUTFITS.EXE window listing looks with their color swatches" width="760">
+<img src="docs/images/outfits-picker.jpg" alt="The OUTFITS.EXE window while the Tamagotchi wears the Y2K outfit" width="760">
 
-<sub><i><b>OUTFITS.EXE</b>: every look with its color palette. The list scrolls inside the window and is generated from the backend's preset registry, so new looks show up automatically.</i></sub>
+<sub><i><b>OUTFITS.EXE</b> while wearing <b>Y2K</b>: lilac and baby pink, a wallpaper of butterflies and flip phones, and a butterfly fluttering across the LCD. Each card shows a look's palette; the list scrolls inside the window and is generated from the backend's preset registry.</i></sub>
 </div>
 
 ### 🌦️ Weather (WEATHER.EXE)
@@ -82,9 +82,9 @@ Everything runs in a **Docker** container on a Mac and is reachable from the pho
 - **"What should I wear?"** sends the selected day and city straight to the chat.
 
 <div align="center">
-<img src="docs/images/weather-window.jpg" alt="The WEATHER.EXE window with today's weather in Florina and a 7-day forecast" width="760">
+<img src="docs/images/weather-window.jpg" alt="The WEATHER.EXE window with today's weather and a 7-day forecast, in the formal outfit" width="760">
 
-<sub><i><b>WEATHER.EXE</b> for the home city (Florina, Greece): today in detail, the next days with pixel weather icons, and a button that asks the pet what to wear.</i></sub>
+<sub><i><b>WEATHER.EXE</b> in the <b>formal</b> outfit (black and gold, bow ties and diamonds): today in detail for the home city, the next days with pixel weather icons, and a button that asks the pet what to wear.</i></sub>
 </div>
 
 ### 🪞 Mirror mode (MIRROR.EXE)
@@ -97,6 +97,12 @@ Everything runs in a **Docker** container on a Mac and is reachable from the pho
 - A retro **walkman** next to the device shows what's playing: pixelated album art, a scrolling title, spinning cassette reels, a progress bar and ◀◀ ❚❚ ▶▶ controls. Close it with × and bring it back from the ♪ icon.
 - In the chat: "put on some music for my cozy outfit" → the pet turns the mood into search words, finds a playlist and plays it (Spotify Premium).
 
+<div align="center">
+<img src="docs/images/spotify-halloween.jpg" alt="The pet suggesting Halloween playlists from Spotify, with the walkman next to it" width="760">
+
+<sub><i>Spotify in the <b>Halloween</b> outfit (pumpkins and bats on the wallpaper): the pet searches Spotify and suggests playlists that match the costume, while the walkman shows the current track.</i></sub>
+</div>
+
 ### 📅 Calendar (CALENDAR.EXE)
 - A 7-day agenda from Google Calendar (titles, times and locations only). Pick an event and ask "what should I wear for it?".
 
@@ -104,9 +110,9 @@ Everything runs in a **Docker** container on a Mac and is reachable from the pho
 - On first use, a wizard explains the pet, how to keep it alive and what every icon does, then asks for the **pet's name**, **what to call you** and its **personality**. The gear icon reopens it at any time.
 
 <div align="center">
-<img src="docs/images/setup-wizard.jpg" alt="The SETUP.EXE onboarding wizard on the personality step" width="760">
+<img src="docs/images/setup-wizard.jpg" alt="The SETUP.EXE onboarding wizard on the personality step, in the Christmas outfit" width="760">
 
-<sub><i><b>SETUP.EXE</b> on the personality step, with the four personalities to choose from. The pixel dots at the bottom show the progress through the six steps.</i></sub>
+<sub><i><b>SETUP.EXE</b> in the <b>Christmas</b> outfit (garland and falling snow on the LCD): the personality step, with four personalities to choose from. The pixel dots show the progress through the six steps.</i></sub>
 </div>
 
 ### 📱 Works on the phone
@@ -291,17 +297,13 @@ The look started from a small moodboard. These images are **references only** an
 
 <table>
   <tr>
-    <td align="center" width="33%">
-      <img src="docs/images/inspiration-tamagotchi.png" alt="A pink Tamagotchi covered in hearts and stars" width="220"><br>
+    <td align="center" width="50%">
+      <img src="docs/images/inspiration-tamagotchi.png" alt="A pink Tamagotchi covered in hearts and stars" width="260"><br>
       <sub>The pink, glittery Tamagotchi shell with hearts and stars that inspired the device and its <b>TAMA♥SMART</b> branding.</sub>
     </td>
-    <td align="center" width="33%">
-      <img src="docs/images/inspiration-pixel-room.png" alt="Pastel pixel art with a plaid background, hearts and Tamagotchi eggs" width="220"><br>
+    <td align="center" width="50%">
+      <img src="docs/images/inspiration-pixel-room.png" alt="Pastel pixel art with a plaid background, hearts and Tamagotchi eggs" width="260"><br>
       <sub>Pastel pixel art with a plaid pattern, hearts and tiny Tamagotchi eggs: the source of the generated <b>pixel wallpaper</b>.</sub>
-    </td>
-    <td align="center" width="33%">
-      <img src="docs/images/inspiration-ibook.png" alt="A white and pink retro Apple iBook" width="220"><br>
-      <sub>A retro pink iBook, from an early idea of showing the app inside an old Mac screen (not implemented, but it set the <b>vintage-tech</b> mood).</sub>
     </td>
   </tr>
 </table>
