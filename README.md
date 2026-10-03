@@ -125,7 +125,7 @@ Everything runs in a **Docker** container on a Mac and is reachable from the pho
 
 ### 📚 Library (LIBRARY.EXE)
 - A **personal knowledge base drawn as a bookshelf**: each book is a topic, its chapters are sub-topics, and chapters hold **Markdown notes** (code blocks with syntax highlighting, tags, created/edited dates). Spines get their own color, height and thickness (more notes = thicker book); a book flies off the shelf and opens when clicked.
-- Full create / edit / rename / move / delete, a search box that works on its own, and **imports of .txt, .md and .pdf** files from the library or straight from the chat. The place to file an import is suggested **locally**, by comparing it with existing notes.
+- Full create / edit / rename / move / delete, a search box that works on its own, and **imports of .txt, .md, .docx and .pdf** files (Word documents become Markdown, keeping headings, lists and tables) from the library or straight from the chat. The place to file an import is suggested **locally**, by comparing it with existing notes.
 - In the chat the pet searches the notes when a question might be answered by them, **cites the book and chapter** it used (with a link to the note), and can save an answer on request: *"αποθήκευσε αυτό στο βιβλίο Προγραμματισμός, κεφάλαιο Python"*.
 - Books or chapters can be marked **private**: they're excluded from the chat and its search at the SQL level.
 
@@ -173,7 +173,7 @@ flowchart LR
 | Layer | Tools |
 |---|---|
 | Frontend | Vanilla JavaScript, HTML, CSS (`@property` animated variables, container queries, canvas pixel art), Web Speech API, `getUserMedia`, marked + DOMPurify + highlight.js (vendored) |
-| Backend | Python 3.12, FastAPI, Uvicorn, Pydantic, Pillow, SQLite (FTS5), pypdf |
+| Backend | Python 3.12, FastAPI, Uvicorn, Pydantic, Pillow, SQLite (FTS5), pypdf, mammoth + markdownify |
 | AI | Anthropic API (Claude Haiku 4.5): tool use, structured outputs, vision |
 | Integrations | Open-Meteo, Google Calendar & Gmail (read-only OAuth), Notion API, Spotify Web API (OAuth PKCE) |
 | Infrastructure | Docker Compose, Tailscale Serve (HTTPS) |

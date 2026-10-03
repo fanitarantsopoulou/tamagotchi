@@ -9,3 +9,5 @@ google-auth-oauthlib
 python-multipart
 pillow
 pypdf
+mammoth
+markdownify
