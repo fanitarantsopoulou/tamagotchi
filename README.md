@@ -32,7 +32,7 @@ Open http://localhost:8000
 ## Controls
 
 - **A** (←): next icon · **B** (Enter): OK · **C** (Esc): back
-- Icons: food, light/sleep, play, clean, stats, chat (opens the CHAT.EXE window), calendar (coming soon), "!" = needs attention
+- Icons: top bar food, light/sleep, play, clean; bottom bar shows 4 at a time (stats, chat, outfits, mirror, calendar...) with ‹ › arrows to page through them
 
 ## Structure
 

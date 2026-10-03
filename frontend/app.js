@@ -167,7 +167,6 @@ const ICON_ART = {
   outfit: ["...##...", "..#..#..", ".....#..", "....#...", "...##...", ".##..##.", "#......#", "########"],
   mirror: ["..####..", ".#....#.", ".#.#..#.", ".#....#.", "..####..", "...##...", "...##...", "...##..."],
   calendar: [".#....#.", "########", "########", "#......#", "#.##.#.#", "#......#", "#.#.##.#", "########"],
-  attention: ["...##...", "..####..", "..####..", "..####..", "...##...", "........", "...##...", "...##..."],
 };
 
 const ICONS = [
@@ -180,9 +179,8 @@ const ICONS = [
   { id: "outfit", row: "bottom" },
   { id: "mirror", row: "bottom" },
   { id: "calendar", row: "bottom", soon: true },
-  { id: "attention", row: "bottom", passive: true },
 ];
-const SELECTABLE = ICONS.filter((i) => !i.passive);
+const SELECTABLE = ICONS; // every icon is a function you can select
 
 // ---------- canvas helpers ----------
 const W = 48, H = 32, GROUND = 30;
@@ -211,30 +209,82 @@ function variant(stage, ...kinds) {
 }
 
 // ---------- icons ----------
-function buildIcons() {
-  ICONS.forEach((icon) => {
-    const c = document.createElement("canvas");
-    c.width = c.height = 8;
-    c.className = "icon" + (icon.soon ? " soon" : "");
-    c.title = icon.soon ? `${icon.id} (coming soon)` : icon.id;
-    const g = c.getContext("2d");
-    g.fillStyle = cssVar("--lcd-px");
-    drawSprite(g, ICON_ART[icon.id], 0, 0);
-    if (!icon.passive) {
-      c.addEventListener("click", () => {
-        state.selected = SELECTABLE.indexOf(icon);
-        press("B");
-      });
-    }
-    icon.el = c;
-    document.getElementById(`icons-${icon.row}`).appendChild(c);
-  });
+// The bottom bar shows a page of BOTTOM_PAGE_SIZE functions at a time (like the top bar), with
+// pixel arrows to page through the rest, so new features can be added without crowding the LCD.
+const BOTTOM_PAGE_SIZE = 4;
+const BOTTOM_PAGED = ICONS.filter((i) => i.row === "bottom");
+const BOTTOM_PAGES = Math.ceil(BOTTOM_PAGED.length / BOTTOM_PAGE_SIZE);
+const ARROW_ART = { left: ["...#", "..##", ".###", "####", ".###", "..##", "...#"] };
+ARROW_ART.right = ARROW_ART.left.map((row) => [...row].reverse().join(""));
+let bottomPage = 0;
+const pageArrows = {};
+
+function pixelCanvas(art, className) {
+  const c = document.createElement("canvas");
+  c.width = art[0].length;
+  c.height = art.length;
+  c.className = className;
+  const g = c.getContext("2d");
+  g.fillStyle = cssVar("--lcd-px");
+  drawSprite(g, art, 0, 0);
+  return c;
 }
 
-function updateIcons() {
+function buildIcons() {
+  const bottom = document.getElementById("icons-bottom");
+  const page = document.createElement("div");
+  page.className = "icon-page";
+
   ICONS.forEach((icon) => {
-    icon.el.classList.toggle("selected", SELECTABLE[state.selected] === icon);
-    if (icon.passive) icon.el.classList.toggle("lit", !!state.pet?.needs_attention);
+    const c = pixelCanvas(ICON_ART[icon.id], "icon" + (icon.soon ? " soon" : ""));
+    c.title = icon.soon ? `${icon.id} (coming soon)` : icon.id;
+    c.addEventListener("click", () => {
+      state.selected = SELECTABLE.indexOf(icon);
+      press("B");
+    });
+    icon.el = c;
+    if (icon.row === "top") document.getElementById("icons-top").appendChild(c);
+    else page.appendChild(c);
+  });
+
+  for (const dir of ["left", "right"]) {
+    const btn = pixelCanvas(ARROW_ART[dir], "page-arrow");
+    btn.title = dir === "left" ? "previous" : "more";
+    btn.addEventListener("click", () => {
+      play("click");
+      showBottomPage(bottomPage + (dir === "left" ? -1 : 1));
+    });
+    pageArrows[dir] = btn;
+  }
+  bottom.append(pageArrows.left, page, pageArrows.right);
+  showBottomPage(0);
+}
+
+function showBottomPage(n) {
+  bottomPage = Math.max(0, Math.min(BOTTOM_PAGES - 1, n));
+  BOTTOM_PAGED.forEach((icon, i) => {
+    icon.el.hidden = Math.floor(i / BOTTOM_PAGE_SIZE) !== bottomPage;
+  });
+  pageArrows.left.classList.toggle("disabled", bottomPage === 0);
+  pageArrows.right.classList.toggle("disabled", bottomPage === BOTTOM_PAGES - 1);
+}
+
+// The "!" status light on the bezel's top-right corner: an indicator, not a function.
+const attentionLed = document.getElementById("attention-led");
+(function drawAttentionLed() {
+  const g = attentionLed.querySelector("canvas").getContext("2d");
+  g.fillStyle = "#ffe066"; // warm LED yellow
+  drawSprite(g, ["###", "###", "###", "###", ".#.", "...", "###", "###"], 0, 0);
+})();
+
+function updateIcons() {
+  attentionLed.classList.toggle("lit", !!state.pet?.needs_attention);
+  const selected = SELECTABLE[state.selected];
+  // cycling with the A button can land on an icon from another page: flip to that page
+  const index = BOTTOM_PAGED.indexOf(selected);
+  if (index >= 0) showBottomPage(Math.floor(index / BOTTOM_PAGE_SIZE));
+  ICONS.forEach((icon) => {
+    icon.el.classList.toggle("selected", selected === icon);
   });
 }
 
