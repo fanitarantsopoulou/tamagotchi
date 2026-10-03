@@ -561,10 +561,13 @@ const Library = (() => {
     return call("/save", { method: "POST", json: { title, body: imported.body, tags: [], book, chapter } });
   }
 
-  importInput.addEventListener("change", safely(async () => {
+  importInput.addEventListener("change", () => {
     const file = importInput.files[0];
     importInput.value = "";
-    if (!file) return;
+    if (file) importFile(file);
+  });
+
+  const importFile = safely(async (file) => {
     const imported = await readFile(file);
     const picker = await placePicker();
     const s = imported.suggestion;
@@ -583,7 +586,27 @@ const Library = (() => {
     const note = await saveImported(imported, v);
     play("confirm");
     await openBook(note.book_id, { chapterId: note.chapter_id, noteId: note.id });
-  }));
+  });
+
+  // Files can also be dragged from Finder and dropped onto the library or the chat window.
+  function acceptDrops(target, onFile) {
+    target.addEventListener("dragover", (e) => {
+      if (!e.dataTransfer.types.includes("Files")) return;
+      e.preventDefault(); // without this the browser would open the file itself
+      target.classList.add("drop-target");
+    });
+    target.addEventListener("dragleave", (e) => {
+      if (!target.contains(e.relatedTarget)) target.classList.remove("drop-target");
+    });
+    target.addEventListener("drop", (e) => {
+      if (!e.dataTransfer.files.length) return;
+      e.preventDefault();
+      target.classList.remove("drop-target");
+      onFile(e.dataTransfer.files[0]);
+    });
+  }
+  acceptDrops(root, importFile);
+  acceptDrops(document.getElementById("chat"), (file) => attachToChat(file));
 
   function currentChapterTitle() {
     return view.book ? currentChapter()?.title ?? "" : "";

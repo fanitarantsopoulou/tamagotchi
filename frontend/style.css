@@ -1274,3 +1274,6 @@ body {
   cursor: pointer;
 }
 .chat-file-actions button:last-child { color: #fff; background: var(--hot-pink); }
+
+/* a file is being dragged over the library or the chat */
+.drop-target { outline: 4px dashed var(--hot-pink); outline-offset: 4px; }
