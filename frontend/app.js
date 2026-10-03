@@ -87,14 +87,58 @@ const S = {
     "..#..",
   ],
   z: ["###", ".#.", "###"],
+  skull: [".###.", "#.#.#", "#####", ".#.#."],
+  thought: ["#......", ".......", ".#.....", "...###.", "..#####", "...###."], // dots + rice ball
+  stink: ["#.", ".#", "#."],
 };
 
-// Per-stage tweaks: closed eyes for sleeping, alternate feet for walking.
+// Per-stage tweaks (row index -> replacement row): closed eyes for sleeping, alternate feet for
+// walking, and a face for each mood.
 const VARIANTS = {
-  baby: { sleep: { 3: "#..####..#" }, step: { 8: ".#......#." } },
-  child: { sleep: { 3: "#...####...#" }, step: { 10: ".##......##." } },
-  adult: { sleep: { 4: "##############", 5: "##...####...##" }, step: { 13: ".##........##." } },
+  baby: {
+    sleep: { 3: "#..####..#" },
+    step: { 8: ".#......#." },
+    happy: { 2: "##.####.##", 3: "#.#.##.#.#", 5: "##.####.##", 6: "###....###" },
+    sad: { 5: "####..####", 6: "###.##.###" },
+    hungry: { 5: "####..####", 6: "####..####" },
+    tired: { 3: "#..####..#", 6: "####..####" },
+    sick: { 2: "#.#.##.#.#", 3: "##.####.##", 4: "#.#.##.#.#", 5: "##########", 6: "##.#..#.##" },
+  },
+  child: {
+    sleep: { 3: "#...####...#" },
+    step: { 10: ".##......##." },
+    happy: { 2: "##..####..##", 3: "#.##.##.##.#", 5: "###.####.###", 6: "####....####" },
+    sad: { 5: "#####..#####", 6: "####.##.####" },
+    hungry: { 5: "#####..#####", 6: "#####..#####" },
+    tired: { 3: "#...####...#" },
+    sick: { 2: "#.#.####.#.#", 3: "##.######.##", 4: "#.#.####.#.#", 5: "############", 6: "###.#..#.###" },
+  },
+  adult: {
+    sleep: { 4: "##############", 5: "##...####...##" },
+    step: { 13: ".##........##." },
+    happy: { 5: "##.##.##.##.##", 7: "####.####.####", 8: "#####....#####" },
+    sad: { 7: "######..######", 8: "#####.##.#####" },
+    hungry: { 7: "#####....#####", 8: "#####....#####" },
+    tired: { 4: "##############", 5: "##...####...##", 7: "##############" },
+    sick: { 3: "##.#.####.#.##", 4: "###.######.###", 5: "##.#.####.#.##", 7: "##############", 8: "####.#..#.####" },
+  },
 };
+
+// Where the left eye sits in each stage's sprite (for the tear).
+const EYE = { baby: { x: 2, y: 3 }, child: { x: 2, y: 3 }, adult: { x: 3, y: 5 } };
+
+// How each mood moves: ms between steps, chance to step, bounce/shake.
+const MOOD_STYLE = {
+  happy: { every: 500, move: 0.85, bounce: true },
+  ok: { every: 900, move: 0.75 },
+  hungry: { every: 900, move: 0.6 },
+  tired: { every: 1800, move: 0.3 },
+  sad: { every: 2000, move: 0.25 },
+  sick: { every: 1500, move: 0.2, shake: true },
+};
+
+// What the pet says on the LCD when its mood changes.
+const MOOD_TEXT = { happy: "YAY!", hungry: "HUNGRY!", tired: "SO SLEEPY", sad: "PLAY W/ ME", sick: "I FEEL SICK" };
 
 const ICON_ART = {
   feed: ["...##...", "..####..", ".######.", "##....##", "#......#", "########", "########", ".######."],
@@ -140,8 +184,8 @@ function drawSprite(target, rows, x, y, { flip = false, maxCols = Infinity } = {
   });
 }
 
-function variant(stage, kind) {
-  const changes = VARIANTS[stage]?.[kind] || {};
+function variant(stage, ...kinds) {
+  const changes = Object.assign({}, ...kinds.map((k) => VARIANTS[stage]?.[k] || {}));
   return S[stage].map((row, i) => changes[i] ?? row);
 }
 
@@ -181,6 +225,7 @@ const state = {
   anim: null, // { type, start, duration }
   x: 20,
   dir: 1,
+  mood: null, // last mood we reacted to
 };
 
 async function api(path, options = {}) {
@@ -195,7 +240,7 @@ async function api(path, options = {}) {
 
 async function refresh() {
   try {
-    state.pet = await api("/pet");
+    setPet(await api("/pet"));
   } catch {
     say("NO SIGNAL");
   }
@@ -211,22 +256,58 @@ function say(text, ms = 1800) {
   bubbleTimer = setTimeout(() => (bubble.hidden = true), ms);
 }
 
-// ---------- sound ----------
+// ---------- sound: 90s piezo buzzer ----------
+// Old virtual pets had a tiny piezo speaker: one square-wave tone at a time, high pitched,
+// switching hard on/off with no fade. Each sound is a list of [frequency Hz, ms] notes;
+// frequency 0 is a rest.
 let audio;
-function beep(freq = 1800, ms = 60) {
+const SOUNDS = {
+  click: [[4000, 30]],
+  confirm: [[3136, 50], [0, 30], [4186, 70]],
+  error: [[880, 90], [0, 50], [880, 140]],
+  happy: [[2093, 70], [2637, 70], [3136, 70], [4186, 160]],
+  hungry: [[3136, 80], [0, 60], [3136, 80], [0, 60], [3136, 80]],
+  sad: [[2637, 150], [2349, 150], [2093, 150], [1760, 320]],
+  tired: [[1568, 220], [0, 80], [1397, 380]],
+  sick: [[2093, 60], [1976, 60], [2093, 60], [1976, 60], [2093, 60], [1976, 160]],
+  sleeping: [[2637, 260], [2093, 260], [1568, 420]],
+  hatch: [[2093, 80], [2637, 80], [3136, 80], [2637, 80], [3136, 80], [4186, 240]],
+};
+
+function play(name) {
   try {
     audio ||= new AudioContext();
+    if (audio.state === "suspended") audio.resume();
     const osc = audio.createOscillator();
     const gain = audio.createGain();
     osc.type = "square";
-    osc.frequency.value = freq;
-    gain.gain.value = 0.04;
+    gain.gain.value = 0;
     osc.connect(gain).connect(audio.destination);
+    let t = audio.currentTime + 0.01;
+    for (const [freq, ms] of SOUNDS[name]) {
+      // setValueAtTime = instant switch, which gives the hard "buzzer" edge
+      gain.gain.setValueAtTime(freq ? 0.035 : 0, t);
+      if (freq) osc.frequency.setValueAtTime(freq, t);
+      t += ms / 1000;
+    }
+    gain.gain.setValueAtTime(0, t);
     osc.start();
-    osc.stop(audio.currentTime + ms / 1000);
+    osc.stop(t + 0.02);
   } catch {
     /* audio is optional */
   }
+}
+
+// ---------- mood ----------
+// Called whenever fresh pet data arrives; reacts once per mood change (not on page load).
+function setPet(pet) {
+  const before = state.mood;
+  state.pet = pet;
+  state.mood = pet.mood;
+  if (!before || before === pet.mood) return;
+  if (before === "egg") return play("hatch"), say("HELLO!");
+  if (SOUNDS[pet.mood]) play(pet.mood);
+  if (MOOD_TEXT[pet.mood]) say(MOOD_TEXT[pet.mood], 2500);
 }
 
 // ---------- actions ----------
@@ -240,13 +321,14 @@ async function runIcon(icon) {
 
   try {
     const { pet, message } = await api(`/pet/${ACTION_FOR[icon.id]}`, { method: "POST" });
-    state.pet = pet;
+    const moodBefore = state.mood;
+    setPet(pet);
     if (ANIM_FOR[icon.id]) state.anim = { type: ANIM_FOR[icon.id], start: performance.now(), duration: 2000 };
     say(message);
-    beep(2400, 90);
+    if (moodBefore === pet.mood) play("confirm"); // a mood change already played its own tune
   } catch (e) {
     say(e.message);
-    beep(400, 200);
+    play("error");
   }
   updateIcons();
 }
@@ -273,7 +355,8 @@ function showStats() {
     <div class="stat">FOOD ${meter(p.hunger)}</div>
     <div class="stat">HAPPY ${meter(p.happiness)}</div>
     <div class="stat">ENERGY ${meter(p.energy)}</div>
-    <div class="stat">HEALTH ${meter(p.health)}</div>`;
+    <div class="stat">HEALTH ${meter(p.health)}</div>
+    <div class="stat">MOOD <span>${p.mood.toUpperCase()}</span></div>`;
   overlay.hidden = false;
 }
 
@@ -286,11 +369,11 @@ async function press(btn) {
   const el = document.querySelector(`[data-btn="${btn}"]`);
   el.classList.add("pressed");
   setTimeout(() => el.classList.remove("pressed"), 120);
-  beep();
+  play("click");
 
   if (state.pet && !state.pet.alive) {
     if (btn === "B") {
-      state.pet = await api("/reset", { method: "POST", body: JSON.stringify({ name: state.pet.name }) });
+      setPet(await api("/reset", { method: "POST", body: JSON.stringify({ name: state.pet.name }) }));
       say("NEW EGG!");
     }
     return updateIcons();
@@ -509,16 +592,34 @@ micBtn.addEventListener("click", () => {
 // ---------- rendering ----------
 let lastWander = 0;
 
-function wander(now, spriteW) {
-  if (now - lastWander < 900) return;
+function wander(now, spriteW, style) {
+  if (now - lastWander < style.every) return;
   lastWander = now;
   const r = Math.random();
   if (r < 0.2) state.dir *= -1;
-  if (r < 0.75) state.x += state.dir * 2;
+  if (r < style.move) state.x += state.dir * 2;
   const maxX = W - spriteW - 2 - (state.pet.poops ? 9 : 0);
   if (state.x <= 1 || state.x >= maxX) {
     state.x = Math.max(1, Math.min(state.x, maxX));
     state.dir *= -1;
+  }
+}
+
+// Little extras drawn around the pet to show how it feels.
+function drawMoodEffects(mood, stage, x, y, w, now, frame) {
+  if (mood === "sad") {
+    const drop = Math.floor(now / 250) % 4; // tear rolling down
+    const eye = EYE[stage];
+    const ex = state.dir < 0 ? x + w - 1 - eye.x : x + eye.x;
+    ctx.clearRect(ex, y + eye.y + 1 + drop, 1, 2); // drawn as "unlit" pixels so it shows on the face
+  } else if (mood === "hungry") {
+    drawSprite(ctx, S.thought, Math.min(x + w, W - 8), Math.max(0, y - 7));
+  } else if (mood === "sick" && frame) {
+    drawSprite(ctx, S.skull, x + Math.floor(w / 2) - 2, Math.max(0, y - 6));
+  } else if (mood === "tired") {
+    drawSprite(ctx, S.z, x + w + 1, y - 2 - (Math.floor(now / 700) % 3));
+  } else if (mood === "happy" && Math.floor(now / 1000) % 3 === 0) {
+    drawSprite(ctx, S.heart, x + w + 1, Math.max(0, y - 4 + frame));
   }
 }
 
@@ -542,23 +643,31 @@ function render(now) {
     return;
   }
 
-  // poops, stacked on the right
+  // poops, stacked on the right, with stink lines
   for (let i = 0; i < p.poops; i++) {
-    drawSprite(ctx, S.poop, W - 7, GROUND - 5 - i * 6 + (frame && i % 2 ? -1 : 0));
+    const py = GROUND - 5 - i * 6 + (frame && i % 2 ? -1 : 0);
+    drawSprite(ctx, S.poop, W - 7, py);
   }
+  if (p.poops) drawSprite(ctx, S.stink, W - 5 + frame, GROUND - 5 - (p.poops - 1) * 6 - 4);
 
   const anim = state.anim && now - state.anim.start < state.anim.duration ? state.anim : null;
   if (!anim) state.anim = null;
   const progress = anim ? (now - anim.start) / anim.duration : 0;
 
-  let rows;
-  if (sleeping) rows = variant(p.stage, "sleep");
-  else rows = frame ? variant(p.stage, "step") : S[p.stage];
+  const mood = p.mood;
+  const style = MOOD_STYLE[mood] || MOOD_STYLE.ok;
+  // During an action animation show the happy face; otherwise the mood's face.
+  const face = sleeping ? "sleep" : anim ? "happy" : mood;
+  const rows = frame && !sleeping ? variant(p.stage, face, "step") : variant(p.stage, face);
   const w = rows[0].length;
 
-  if (!sleeping && !anim) wander(now, w);
+  if (!sleeping && !anim) wander(now, w, style);
   let x = state.x;
   let y = GROUND - rows.length;
+  if (!sleeping && !anim) {
+    if (style.bounce && frame) y -= 1;
+    if (style.shake) x += Math.floor(now / 120) % 2; // shivering
+  }
 
   if (anim?.type === "eat") {
     x = 6;
@@ -580,6 +689,8 @@ function render(now) {
     const zx = x + w + 1;
     drawSprite(ctx, S.z, zx, y - 2 - frame * 3);
     if (frame) drawSprite(ctx, S.z, zx + 4, y - 8);
+  } else if (!anim) {
+    drawMoodEffects(mood, p.stage, x, y, w, now, frame);
   }
 }
 

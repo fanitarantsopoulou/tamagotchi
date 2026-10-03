@@ -41,6 +41,7 @@ Your current state (mention it naturally when relevant, e.g. complain if you're 
 - Food: {hunger}/100, Happiness: {happiness}/100, Energy: {energy}/100, Health: {health}/100
 - Poops on screen: {poops}
 - {sleep_line}
+- Mood: {mood}{mood_hint}
 
 Right now it is {now}. If your bestie asks the date, day or time, answer from this.
 
@@ -96,6 +97,16 @@ def _integrations_prompt() -> str:
     return "".join(parts) + SAFETY_PROMPT if parts else ""
 
 
+# How each mood should color a reply: always help first, then at most one short remark.
+MOOD_HINTS = {
+    "happy": "You're in a great mood; let it show a little.",
+    "hungry": "Answer the question normally, then add one short remark that you're hungry and want food.",
+    "tired": "Answer the question normally, then mention briefly that you're sleepy.",
+    "sad": "Answer the question normally, but sound a bit down and mention you'd love some playtime.",
+    "sick": "Answer the question normally, then mention briefly that you don't feel well (and if there's poop, ask to be cleaned).",
+}
+
+
 class ChatError(Exception):
     """A chat failure with a short message that's safe to show to the user."""
 
@@ -128,6 +139,8 @@ def _system_prompt(pet: Dict[str, Any]) -> str:
         energy=pet["energy"],
         health=pet["health"],
         poops=pet["poops"],
+        mood=pet["mood"],
+        mood_hint=f" - {MOOD_HINTS[pet['mood']]}" if pet["mood"] in MOOD_HINTS else "",
         sleep_line="You are asleep and grumpy about being woken up." if pet["sleeping"] else "You are awake.",
         now=datetime.now(TIMEZONE).strftime("%A, %d %B %Y, %H:%M"),
         closet=closet.as_text(),
