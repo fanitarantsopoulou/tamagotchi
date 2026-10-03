@@ -28,6 +28,22 @@
 
   --px: 4px; /* size of one LCD pixel (screen is 48x32) */
 
+  /* library: book colors and the shelf, partly derived from the theme so they follow it */
+  --book-0: var(--theme-2);
+  --book-1: var(--mauve-3);
+  --book-2: #4f8fc0;
+  --book-3: color-mix(in srgb, var(--theme-3) 85%, black);
+  --book-4: #3e8f7a;
+  --book-5: #d9a441;
+  --book-6: color-mix(in srgb, var(--theme-1) 70%, var(--mauve-3));
+  --book-7: var(--plum);
+  --shelf-back: color-mix(in srgb, var(--theme-1) 25%, #fff6ee);
+  --shelf-wood: color-mix(in srgb, var(--theme-3) 35%, #8a5a3c);
+  --shelf-edge: color-mix(in srgb, var(--shelf-wood) 70%, black);
+  --page-bg: #fffaf2;
+  --page-ink: var(--plum);
+  --page-line: color-mix(in srgb, var(--theme-1) 45%, white);
+
   /* small stepped "pixel" corners, reused on the bezel, LCD, buttons and chat */
   --notch: polygon(
     8px 0, calc(100% - 8px) 0, calc(100% - 8px) 4px, calc(100% - 4px) 4px,
@@ -867,3 +883,394 @@ body {
   .device-wrap.transforming, .device-wrap.transforming .device::after { animation: none; }
   .device::after, .attention-led.lit canvas { animation: none; }
 }
+
+/* ---------- LIBRARY.EXE: bookshelf knowledge base ---------- */
+.window.library {
+  position: relative; /* the dialog layer is placed over the window */
+  width: min(600px, 94vw);
+  height: 520px;
+}
+.lib-toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 4px solid var(--deep-pink);
+  background: #fff;
+}
+.lib-search { flex: 1; display: flex; gap: 6px; min-width: 0; }
+.lib-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 15px;
+  color: var(--plum);
+  background: var(--pink-1);
+  border: 3px solid var(--deep-pink);
+  outline: none;
+}
+.lib-search input:focus { background: #fff; }
+.lib-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  font-family: "Press Start 2P", monospace;
+  font-size: 8px;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 3px solid var(--deep-pink);
+  cursor: pointer;
+}
+.lib-btn:hover, .lib-btn:focus-visible { background: var(--pink-1); }
+.lib-btn.primary, .lib-btn.on { color: #fff; background: var(--hot-pink); }
+.lib-btn.danger { color: #b3261e; border-color: #b3261e; }
+.lib-btn.primary.danger { color: #fff; background: #b3261e; }
+.lib-btn:disabled { opacity: 0.5; cursor: wait; }
+
+.lib-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  container-type: inline-size; /* the book switches to one page when the window is narrow */
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 14px;
+  color: var(--page-ink);
+  background: var(--shelf-back);
+}
+.lib-empty, .lib-hint { margin: 12px; opacity: 0.8; }
+.lib-error {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 6px 10px;
+  background: #fff3b8;
+  border-bottom: 3px dashed var(--deep-pink);
+}
+
+/* The shelf: books stand in fixed-height slots, so every row sits on its own plank and rows
+   wrap onto a new shelf when the window is full. The planks are a repeating background. */
+.shelf {
+  --row: 152px;
+  --plank: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  column-gap: 3px;
+  min-height: 100%;
+  padding: 0 14px;
+  background:
+    repeating-linear-gradient(to bottom,
+      transparent 0 calc(var(--row) - var(--plank) - 4px),
+      rgba(0, 0, 0, 0.12) calc(var(--row) - var(--plank) - 4px) calc(var(--row) - var(--plank)),
+      var(--shelf-wood) calc(var(--row) - var(--plank)) calc(var(--row) - 4px),
+      var(--shelf-edge) calc(var(--row) - 4px) var(--row));
+}
+.book-slot {
+  height: var(--row);
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: var(--plank);
+}
+.book-spine {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  padding: 10px 0 8px;
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 13px;
+  color: #fff;
+  background:
+    linear-gradient(to right, rgba(255, 255, 255, 0.25) 0 3px, transparent 3px calc(100% - 4px), rgba(0, 0, 0, 0.25) calc(100% - 4px)),
+    var(--book);
+  border: 2px solid color-mix(in srgb, var(--book) 60%, black);
+  border-bottom: 0;
+  cursor: pointer;
+  transition: transform 0.15s steps(3);
+}
+.book-spine:hover, .book-spine:focus-visible { transform: translateY(-10px); outline: none; }
+.book-spine:focus-visible { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--deep-pink); }
+.spine-band { width: 100%; height: 6px; margin-bottom: 8px; background: rgba(255, 255, 255, 0.45); flex: none; }
+.spine-title {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  max-height: calc(100% - 30px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.35);
+}
+.spine-lock {
+  position: absolute;
+  bottom: 4px;
+  font-family: "Press Start 2P", monospace;
+  font-size: 5px;
+  padding: 1px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.book-new {
+  width: 30px;
+  height: 96px;
+  justify-content: center;
+  font-family: "Press Start 2P", monospace;
+  font-size: 12px;
+  color: var(--deep-pink);
+  background: transparent;
+  border: 3px dashed var(--deep-pink);
+  border-bottom: 0;
+}
+
+/* Opening: a copy of the book flies from the shelf to the window, then its cover swings open. */
+.book-ghost {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  transform-origin: top left;
+  perspective: 900px;
+  background: var(--page-bg);
+  border: 4px solid color-mix(in srgb, var(--book) 60%, black);
+}
+.book-ghost-cover {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  background:
+    linear-gradient(to right, rgba(0, 0, 0, 0.25) 0 10px, transparent 10px),
+    var(--book);
+  transition: transform 0.38s ease-in;
+}
+.book-ghost.opening .book-ghost-cover { transform: rotateY(-100deg); }
+.lib-book.just-opened { animation: book-fade 0.25s ease-out; }
+@keyframes book-fade { from { opacity: 0; } }
+
+/* An open book: table of contents on the left page, the chapter / note on the right page. */
+.lib-book {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--page-bg);
+  border-left: 10px solid var(--book);
+}
+.lib-book-head, .lib-page-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.lib-book-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 6px 8px;
+  background: var(--book);
+  color: #fff;
+}
+.lib-book-head h2, .lib-page-head h3 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: normal;
+}
+.lib-pages {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(130px, 34%) 1fr;
+}
+.lib-page { padding: 10px 12px; min-width: 0; }
+.lib-toc {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-right: 2px solid var(--page-line);
+  /* the gutter's shadow, like the middle of an open book */
+  box-shadow: inset -10px 0 12px -10px rgba(0, 0, 0, 0.25);
+}
+.lib-toc h3 { margin: 0 0 4px; font-size: 13px; font-weight: normal; opacity: 0.7; text-transform: uppercase; }
+.lib-toc-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 6px;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+.lib-toc-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lib-toc-item:hover { border-color: var(--page-line); }
+.lib-toc-item.current { color: #fff; background: var(--book); }
+.lib-toc .lib-btn { margin-top: 6px; align-self: flex-start; }
+.lib-back { display: none; }
+
+.lib-content { display: flex; flex-direction: column; gap: 8px; }
+.lib-content > .lib-btn { align-self: flex-start; }
+.lib-note-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: #fff;
+  border: 2px solid var(--page-line);
+  box-shadow: 3px 3px 0 var(--page-line);
+  cursor: pointer;
+}
+.lib-note-card:hover { border-color: var(--book, var(--deep-pink)); }
+.lib-note-card b { font-weight: normal; font-size: 15px; }
+.lib-note-card span { opacity: 0.8; overflow-wrap: anywhere; }
+.lib-meta { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 0; font-size: 12px; opacity: 0.75; }
+.lib-place { font-size: 12px; color: var(--deep-pink); }
+.lib-tag { font-style: normal; padding: 0 4px; background: var(--pink-1); border: 1px solid var(--page-line); }
+.lib-results { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; min-height: 100%; background: var(--page-bg); }
+
+/* Note text: a readable book font, with Markdown and highlighted code blocks */
+.lib-markdown {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 15px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.lib-markdown h1, .lib-markdown h2, .lib-markdown h3 { font-family: "Tiny5", "VT323", monospace; font-weight: normal; margin: 0.8em 0 0.3em; }
+.lib-markdown p { margin: 0 0 0.6em; }
+.lib-markdown pre {
+  overflow-x: auto;
+  padding: 8px;
+  background: #fff;
+  border: 2px solid var(--page-line);
+}
+.lib-markdown code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+.lib-markdown :not(pre) > code { padding: 0 3px; background: var(--pink-1); }
+.lib-markdown pre code.hljs { padding: 0; background: transparent; }
+.lib-markdown blockquote { margin: 0 0 0.6em; padding-left: 10px; border-left: 4px solid var(--page-line); }
+.lib-markdown a { color: var(--deep-pink); }
+.lib-markdown table { border-collapse: collapse; }
+.lib-markdown td, .lib-markdown th { border: 1px solid var(--page-line); padding: 2px 6px; }
+
+.lib-editor { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.lib-editor input, .lib-editor textarea, .lib-field input, .lib-field select, .lib-field textarea {
+  width: 100%;
+  padding: 4px 6px;
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 15px;
+  color: var(--plum);
+  background: #fff;
+  border: 3px solid var(--deep-pink);
+  outline: none;
+}
+.lib-editor textarea {
+  flex: 1;
+  min-height: 220px;
+  resize: vertical;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.lib-preview { min-height: 220px; padding: 6px; background: #fff; border: 3px dashed var(--page-line); }
+.lib-tabs { display: flex; gap: 4px; }
+
+/* In-window dialogs (confirmations, names, "where should this go?") */
+.lib-dialog {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(61, 35, 87, 0.35);
+}
+.lib-dialog[hidden] { display: none; }
+.lib-dialog-box {
+  width: min(380px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 14px;
+  color: var(--plum);
+  background: #fff;
+  border: 4px solid var(--deep-pink);
+  box-shadow: 6px 6px 0 var(--deep-pink);
+}
+.lib-dialog-box h3 { margin: 0; font-family: "Press Start 2P", monospace; font-size: 10px; color: var(--deep-pink); line-height: 1.4; }
+.lib-dialog-box p { margin: 0; }
+.lib-field { display: flex; flex-direction: column; gap: 3px; }
+.lib-field-checkbox { flex-direction: row; align-items: center; gap: 6px; cursor: pointer; }
+.lib-field-checkbox input { width: 16px; height: 16px; accent-color: var(--hot-pink); }
+.lib-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.lib-swatches input {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  background: var(--book);
+  border: 3px solid #fff;
+  outline: 2px solid color-mix(in srgb, var(--book) 60%, black);
+  cursor: pointer;
+}
+.lib-swatches input:checked { outline: 3px solid var(--deep-pink); }
+.lib-dialog-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 4px; }
+
+/* Narrow window (phones): one page at a time, with a back arrow from the page to the contents. */
+@container (max-width: 480px) {
+  .lib-pages { grid-template-columns: 1fr; }
+  .lib-book.show-page .lib-toc { display: none; }
+  .lib-book:not(.show-page) .lib-content { display: none; }
+  .lib-toc { border-right: 0; box-shadow: none; }
+  .lib-back { display: inline-flex; }
+  .shelf { --row: 136px; padding: 0 8px; }
+}
+@media (max-width: 760px) {
+  .window.library { position: fixed; width: calc(100vw - 16px); height: min(640px, 86vh); bottom: 8px; }
+  .lib-toolbar { flex-wrap: wrap; }
+  .lib-search { flex-basis: 100%; }
+  .lib-search input, .lib-editor input, .lib-editor textarea, .lib-field input, .lib-field select { font-size: 16px; } /* no iOS zoom */
+}
+@media (prefers-reduced-motion: reduce) {
+  .book-spine { transition: none; }
+  .lib-book.just-opened { animation: none; }
+}
+
+/* library bits inside the chat: "+" file button, source links, the "where to save" card */
+.chat-form .chat-attach {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-family: "Press Start 2P", monospace;
+  font-size: 12px;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 3px solid var(--deep-pink);
+  cursor: pointer;
+}
+.msg.note.source { cursor: pointer; text-decoration: underline dotted; }
+.msg.note.source:hover { background: var(--pink-1); }
+.chat-file-card { align-self: flex-start; display: flex; flex-direction: column; gap: 4px; background: #fff; font-size: 14px; }
+.chat-file-card label { display: flex; flex-direction: column; }
+.chat-file-card input { font: inherit; padding: 2px 4px; color: var(--plum); border: 2px solid var(--deep-pink); }
+.chat-file-actions { display: flex; justify-content: flex-end; gap: 4px; }
+.chat-file-actions button {
+  font-family: "Press Start 2P", monospace;
+  font-size: 8px;
+  padding: 4px 6px;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 2px solid var(--deep-pink);
+  cursor: pointer;
+}
+.chat-file-actions button:last-child { color: #fff; background: var(--hot-pink); }

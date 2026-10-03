@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 import calendar_reader
 import chat
+from library import routes as library_routes
 import mirror
 import notifier
 import outfit_of_day
@@ -70,7 +71,7 @@ def reset_pet(body: ResetRequest):
 
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]
-    content: str = Field(min_length=1, max_length=2000)
+    content: str = Field(min_length=1, max_length=8000)  # long enough to paste a note to save
 
 
 class ChatRequest(BaseModel):
@@ -260,6 +261,10 @@ async def mirror_photo(photo: UploadFile = File(...)):
         return await run_in_threadpool(_review_photo, data)
     except mirror.MirrorError as e:
         raise HTTPException(status_code=422, detail=str(e))
+
+
+# ---------- Library (personal knowledge base) ----------
+app.include_router(library_routes.router)
 
 
 # Must be mounted last so it doesn't shadow the /api routes.

@@ -170,6 +170,7 @@ const ICON_ART = {
   music: ["....##..", "....#.#.", "....#..#", "....#...", "....#...", ".###....", "####....", ".##....."],
   bell: ["...##...", "..####..", ".######.", ".######.", ".######.", "########", "........", "...##..."],
   setup: ["...##...", ".#.##.#.", "..####..", "###..###", "###..###", "..####..", ".#.##.#.", "...##..."],
+  library: ["##.##.#.", "##.##.#.", "##.##.##", "#..#..##", "##.##.##", "##.##.##", "##.##..#", "########"],
   calendar: [".#....#.", "########", "########", "#......#", "#.##.#.#", "#......#", "#.#.##.#", "########"],
 };
 
@@ -186,6 +187,7 @@ const ICONS = [
   { id: "music", row: "bottom" },
   { id: "bell", row: "bottom" },
   { id: "calendar", row: "bottom" },
+  { id: "library", row: "bottom" },
   { id: "setup", row: "bottom" },
 ];
 const SELECTABLE = ICONS; // every icon is a function you can select
@@ -408,6 +410,7 @@ async function runIcon(icon) {
   if (icon.id === "setup") return openWizard();
   if (icon.id === "music") return toggleWalkman();
   if (icon.id === "bell") return openNotifs();
+  if (icon.id === "library") return openLibrary();
 
   try {
     const { pet, message } = await api(`/pet/${ACTION_FOR[icon.id]}`, { method: "POST" });
@@ -493,6 +496,7 @@ document.addEventListener("keydown", (e) => {
       closeCalendar();
       closeWizard();
       closeNotifs();
+      closeLibrary();
     }
     return;
   }
@@ -525,6 +529,7 @@ function addMessage(kind, text) {
 async function openChat() {
   unlockSpeech();
   closeNotifs();
+  closeLibrary();
   closeOutfits();
   closeMirror();
   closeWeather();
@@ -557,7 +562,7 @@ async function sendMessage(text) {
   const typing = addMessage("pet typing", "...");
   sendBtn.disabled = true;
   try {
-    const { message, changes, theme } = await api("/chat", { method: "POST", body: JSON.stringify({ messages: chatHistory }) });
+    const { message, changes, theme, sources = [] } = await api("/chat", { method: "POST", body: JSON.stringify({ messages: chatHistory }) });
     if (theme) {
       // The backend recognized a theme request: play the transformation, then show the reply.
       typing.textContent = "✨ ...";
@@ -567,6 +572,7 @@ async function sendMessage(text) {
     typing.remove();
     addMessage("pet", message);
     changes.forEach((change) => addMessage("note", `✓ ${change}`));
+    sources.forEach((source) => showSource(source));
     speak(message);
     state.anim = { type: "play", start: performance.now(), duration: 1500 };
   } catch (err) {
@@ -661,6 +667,7 @@ function drawTransform(now, cx, cy) {
 
 async function openOutfits() {
   closeNotifs();
+  closeLibrary();
   closeChat();
   closeMirror();
   closeWeather();
@@ -811,6 +818,7 @@ async function retake() {
 
 async function openMirror() {
   closeNotifs();
+  closeLibrary();
   closeChat();
   closeOutfits();
   closeWeather();
@@ -999,6 +1007,7 @@ async function loadWeather(city) {
 
 async function openWeather() {
   closeNotifs();
+  closeLibrary();
   closeChat();
   closeOutfits();
   closeMirror();
@@ -1068,6 +1077,7 @@ function renderCalendar(days) {
 
 async function openCalendar() {
   closeNotifs();
+  closeLibrary();
   closeChat();
   closeOutfits();
   closeMirror();
@@ -1333,6 +1343,7 @@ function renderWizard() {
 
 async function openWizard() {
   closeNotifs();
+  closeLibrary();
   closeChat();
   closeOutfits();
   closeMirror();
@@ -1423,7 +1434,7 @@ function renderNotifs({ telegram, inbox }) {
 }
 
 async function openNotifs() {
-  [closeChat, closeOutfits, closeMirror, closeWeather, closeCalendar, closeWizard].forEach((close) => close());
+  [closeChat, closeOutfits, closeMirror, closeWeather, closeCalendar, closeWizard, closeLibrary].forEach((close) => close());
   notifsEl.hidden = false;
   notifsBody.replaceChildren(el("div", "wx-error", "Loading..."));
   try {

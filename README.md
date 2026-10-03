@@ -123,6 +123,12 @@ Everything runs in a **Docker** container on a Mac and is reachable from the pho
 - Quiet hours, digest time and a daily limit live in `config/settings.json`; the bell icon opens an in-app inbox with the same messages.
 - New sources are small `NotificationProvider` modules in `backend/notification_providers/`.
 
+### 📚 Library (LIBRARY.EXE)
+- A **personal knowledge base drawn as a bookshelf**: each book is a topic, its chapters are sub-topics, and chapters hold **Markdown notes** (code blocks with syntax highlighting, tags, created/edited dates). Spines get their own color, height and thickness (more notes = thicker book); a book flies off the shelf and opens when clicked.
+- Full create / edit / rename / move / delete, a search box that works on its own, and **imports of .txt, .md and .pdf** files from the library or straight from the chat. The place to file an import is suggested **locally**, by comparing it with existing notes.
+- In the chat the pet searches the notes when a question might be answered by them, **cites the book and chapter** it used (with a link to the note), and can save an answer on request: *"αποθήκευσε αυτό στο βιβλίο Προγραμματισμός, κεφάλαιο Python"*.
+- Books or chapters can be marked **private**: they're excluded from the chat and its search at the SQL level.
+
 ### 📱 Works on the phone
 - Served over **HTTPS through Tailscale**, so the camera and microphone work on the iPhone too. On small screens the windows open as a bottom panel.
 
@@ -159,14 +165,15 @@ flowchart LR
 - **Context providers.** Each outside source (weather, calendar, Spotify) is a small `ContextProvider` with its own tools and prompt section. Adding one (e.g. a habit tracker) is a new file plus one line in a list; the chat core doesn't change.
 - **Registries over code.** Themes (`PRESETS`) and personalities (`PERSONALITIES`) are data: the classifier prompt, the JSON schema, the outfit list and the wizard are all generated from them.
 - **Structured outputs** for the theme classifier and Mirror mode, so their JSON is always valid.
+- **Swappable search.** The library's full-text search (SQLite FTS5 with accent-insensitive prefix matching, so Greek word endings match) sits behind a small `SearchBackend` interface; a vector store / RAG backend can replace it without touching the rest. Only the few notes a search picks for a question are sent to the model, never the whole library.
 - **Safe persistence.** Atomic, uniquely named temp-file writes plus locks, after a real race condition corrupted a JSON file under concurrent requests.
 
 ## 🧰 Tech stack
 
 | Layer | Tools |
 |---|---|
-| Frontend | Vanilla JavaScript, HTML, CSS (`@property` animated variables, canvas pixel art), Web Speech API, `getUserMedia` |
-| Backend | Python 3.12, FastAPI, Uvicorn, Pydantic, Pillow |
+| Frontend | Vanilla JavaScript, HTML, CSS (`@property` animated variables, container queries, canvas pixel art), Web Speech API, `getUserMedia`, marked + DOMPurify + highlight.js (vendored) |
+| Backend | Python 3.12, FastAPI, Uvicorn, Pydantic, Pillow, SQLite (FTS5), pypdf |
 | AI | Anthropic API (Claude Haiku 4.5): tool use, structured outputs, vision |
 | Integrations | Open-Meteo, Google Calendar & Gmail (read-only OAuth), Notion API, Spotify Web API (OAuth PKCE) |
 | Infrastructure | Docker Compose, Tailscale Serve (HTTPS) |
@@ -191,12 +198,15 @@ tamagotchi/
 │   ├── spotify_client.py       # Spotify (PKCE login, playback)
 │   ├── google_auth.py          # one Google login for Gmail + Calendar
 │   ├── context_providers/      # pluggable chat context (weather, calendar, spotify)
+│   ├── library/                # knowledge base: SQLite store, FTS5 search, importer, chat tools, routes
 │   ├── storage.py, settings.py # safe JSON writes, config loading
-│   └── data/                   # runtime JSON state (git-ignored)
+│   └── data/                   # runtime JSON state + library.db (git-ignored)
 ├── frontend/
 │   ├── index.html, style.css
 │   ├── app.js                  # device, LCD rendering, windows, chat, voice
-│   └── themes.js               # theme colors, wallpaper, LCD effects
+│   ├── library.js              # LIBRARY.EXE: shelf, open book, editor, imports
+│   ├── themes.js               # theme colors, wallpaper, LCD effects
+│   └── vendor/                 # marked, DOMPurify, highlight.js (served locally)
 ├── config/settings.json        # home city for the weather
 ├── docs/images/                # README screenshots & inspiration
 ├── Dockerfile, docker-compose.yml
@@ -294,6 +304,7 @@ After adding keys to `.env`, run `docker compose up -d --force-recreate`.
 - **Least privilege.** Gmail and Calendar are read-only; Spotify asks for 3 playback scopes; Notion only sees the pages you share.
 - **No photo storage.** Mirror photos exist only in memory for one request.
 - **Prompt-injection aware.** Text from emails, pages, events or images is treated as information, never as instructions; destructive actions only happen on the user's own request.
+- **Library notes stay local.** They live in a SQLite file on the Docker volume, are never logged (searches are POSTed so queries stay out of access logs), and imported files are read in memory only. The chat sees book/chapter titles and only the notes a search picks for the current question; private books and chapters never reach it.
 - **What leaves the machine:** chat messages, and any data the pet reads to answer them, are sent to the Anthropic API.
 
 ## 🗺️ Roadmap
