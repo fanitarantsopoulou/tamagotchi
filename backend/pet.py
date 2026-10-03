@@ -189,6 +189,15 @@ def react(mood: str, happiness_boost: float = 0) -> Dict[str, Any]:
     return public_view(pet)
 
 
+def rename(name: str) -> Dict[str, Any]:
+    """Give the pet a new name, keeping its stats."""
+    with LOCK:
+        pet = load()
+        pet["name"] = name.strip()[:12] or pet["name"]
+        save(pet)
+    return public_view(pet)
+
+
 def reset(name: str) -> Dict[str, Any]:
     """Start a new pet with the given name (trimmed to 12 chars) and save it."""
     pet = new_pet(name.strip()[:12] or "Mochi")

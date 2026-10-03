@@ -670,6 +670,149 @@ body {
 .cal-empty { font-size: 13px; opacity: 0.7; padding: 2px 0 4px; }
 .weather-actions button:disabled { opacity: 0.45; cursor: default; }
 
+/* ---------- Spotify walkman ---------- */
+.walkman {
+  width: 220px;
+  padding: 10px 12px 12px;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.5) 0 1px, transparent 1.2px) 0 0 / 9px 9px,
+    var(--theme-2);
+  border: 4px solid var(--deep-pink);
+  box-shadow: 8px 8px 0 var(--deep-pink), inset 0 -6px 0 rgba(0, 0, 0, 0.15);
+  clip-path: var(--notch);
+  color: #fff;
+}
+.walkman[hidden] { display: none; }
+.walkman-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.walkman-brand { font-family: "Press Start 2P", monospace; font-size: 9px; text-shadow: 2px 2px 0 var(--deep-pink); }
+.walkman-right { display: flex; align-items: center; gap: 6px; }
+.walkman-close {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  font: 12px/1 "Press Start 2P", monospace;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 2px solid var(--deep-pink);
+  cursor: pointer;
+}
+.walkman-led { width: 8px; height: 8px; background: #3a2a3a; border: 2px solid var(--deep-pink); }
+.walkman.playing .walkman-led { background: #7dff6b; animation: blink 1s steps(1) infinite; }
+
+.cassette { padding: 6px; background: #f6efe2; border: 3px solid var(--deep-pink); }
+.cassette-label { display: flex; gap: 6px; align-items: center; padding: 4px; background: #fff; border: 2px solid var(--pink-3); }
+.walkman-art { width: 40px; height: 40px; flex: 0 0 40px; image-rendering: pixelated; background: var(--pink-1); }
+.cassette-text { min-width: 0; flex: 1; font-family: "Tiny5", "VT323", monospace; color: var(--plum); }
+.marquee { overflow: hidden; white-space: nowrap; font-size: 13px; }
+.marquee span { display: inline-block; }
+.marquee.scroll span { padding-left: 100%; animation: marquee 9s linear infinite; }
+@keyframes marquee { to { transform: translateX(-100%); } }
+.walkman-artist { font-size: 11px; opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.cassette-window {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 6px 18px 0;
+  padding: 4px 10px;
+  background: #2a2030;
+  border: 2px solid var(--deep-pink);
+}
+.tape { flex: 1; height: 6px; margin: 0 6px; background: #6b4a3a; }
+/* pixel reels: a ring with 4 spokes, turning in hard steps while playing */
+.reel {
+  width: 18px;
+  height: 18px;
+  background:
+    linear-gradient(#2a2030, #2a2030) center / 4px 4px no-repeat,
+    linear-gradient(90deg, transparent 7px, #f6efe2 7px 11px, transparent 11px),
+    linear-gradient(transparent 7px, #f6efe2 7px 11px, transparent 11px),
+    #fff;
+  clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
+}
+.walkman.playing .reel { animation: reel 0.8s steps(4) infinite; }
+@keyframes reel { to { transform: rotate(360deg); } }
+
+.walkman-progress { height: 6px; margin: 8px 0; background: rgba(0, 0, 0, 0.25); border: 2px solid var(--deep-pink); }
+.walkman-progress i { display: block; height: 100%; width: 0; background: #fff; }
+.walkman-buttons { display: flex; justify-content: center; gap: 8px; }
+.walkman-buttons button {
+  min-width: 44px;
+  padding: 6px 4px;
+  font-size: 11px;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 3px solid var(--deep-pink);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+.walkman-buttons button:active { transform: translateY(2px); box-shadow: none; }
+
+/* ---------- SETUP.EXE (onboarding wizard) ---------- */
+.wizard { z-index: 30; }
+.wizard-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 16px;
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--plum);
+  background: var(--pink-1);
+}
+.wizard-body h2 { margin: 0 0 8px; font-family: "Press Start 2P", monospace; font-size: 11px; line-height: 1.5; color: var(--deep-pink); }
+.wizard-body p { margin: 0 0 8px; }
+.wizard-body .wiz-egg { display: block; width: 60px; height: 72px; margin: 4px auto 10px; image-rendering: pixelated; }
+.wizard-body label { display: block; margin: 10px 0 4px; }
+.wizard-body input {
+  width: 100%;
+  padding: 5px 8px;
+  font: inherit;
+  color: var(--plum);
+  background: #fff;
+  border: 3px solid var(--deep-pink);
+  outline: none;
+}
+.wiz-icons { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; margin-top: 6px; }
+.wiz-icons div { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.wiz-icons canvas { width: 16px; height: 16px; image-rendering: pixelated; }
+.wiz-keys b { font-family: "Press Start 2P", monospace; font-size: 9px; color: var(--hot-pink); }
+.wiz-cards { display: grid; gap: 6px; }
+.wiz-card {
+  padding: 6px 8px;
+  font: inherit;
+  text-align: left;
+  color: var(--plum);
+  background: #fff;
+  border: 3px solid var(--deep-pink);
+  cursor: pointer;
+}
+.wiz-card small { display: block; font-size: 12px; opacity: 0.75; }
+.wiz-card.active { color: #fff; background: var(--hot-pink); }
+.wizard-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  background: #fff;
+  border-top: 4px solid var(--deep-pink);
+}
+.wizard-nav button {
+  padding: 8px 12px;
+  font-family: "Press Start 2P", monospace;
+  font-size: 9px;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 3px solid var(--deep-pink);
+  cursor: pointer;
+}
+.wizard-nav button.primary { color: #fff; background: var(--hot-pink); }
+.wizard-nav button:disabled { visibility: hidden; }
+.wizard-dots { display: flex; gap: 4px; }
+.wizard-dots i { width: 8px; height: 8px; border: 2px solid var(--deep-pink); }
+.wizard-dots i.on { background: var(--deep-pink); }
+
 /* On narrow screens (phones) the windows open as a panel over the page, so nothing needs a
    page scroll to be reached. */
 @media (max-width: 760px) {
@@ -708,6 +851,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .walkman.playing .reel, .marquee.scroll span { animation: none; }
   .device-wrap.transforming, .device-wrap.transforming .device::after { animation: none; }
   .device::after, .attention-led.lit canvas { animation: none; }
 }

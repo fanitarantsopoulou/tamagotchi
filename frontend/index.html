@@ -11,6 +11,33 @@
 </head>
 <body>
   <main class="stage">
+    <!-- Spotify "now playing" as a retro walkman (hidden until Spotify is connected) -->
+    <aside class="walkman" id="walkman" hidden aria-label="Now playing on Spotify">
+      <div class="walkman-top">
+        <span class="walkman-brand">TAMA♥WALK</span>
+        <span class="walkman-right">
+          <span class="walkman-led" title="playing"></span>
+          <button type="button" class="walkman-close" id="walkman-close" aria-label="Close walkman" title="Close (reopen from the music icon)">×</button>
+        </span>
+      </div>
+      <div class="cassette">
+        <div class="cassette-label">
+          <canvas class="walkman-art" id="walkman-art" width="20" height="20"></canvas>
+          <div class="cassette-text">
+            <div class="marquee"><span id="walkman-title">Nothing playing</span></div>
+            <div class="walkman-artist" id="walkman-artist"></div>
+          </div>
+        </div>
+        <div class="cassette-window" aria-hidden="true"><i class="reel"></i><i class="tape"></i><i class="reel"></i></div>
+      </div>
+      <div class="walkman-progress"><i id="walkman-bar"></i></div>
+      <div class="walkman-buttons">
+        <button type="button" data-sp="previous" aria-label="Previous">◀◀</button>
+        <button type="button" data-sp="toggle" id="walkman-toggle" aria-label="Play or pause">▶</button>
+        <button type="button" data-sp="next" aria-label="Next">▶▶</button>
+      </div>
+    </aside>
+
     <div class="device-wrap">
       <div class="keyring" aria-hidden="true"></div>
       <div class="device">
@@ -115,6 +142,19 @@
       <div class="weather-body calendar-body" id="calendar-body"></div>
       <div class="weather-actions">
         <button type="button" id="calendar-wear" disabled>♥ WHAT SHOULD I WEAR FOR IT?</button>
+      </div>
+    </section>
+    <!-- First-time setup wizard (also reopened from the gear icon) -->
+    <section class="window wizard" id="wizard" hidden aria-label="Setup">
+      <header class="chat-title">
+        <span>♥ SETUP.EXE</span>
+        <button class="chat-close" id="wizard-close" aria-label="Skip setup">×</button>
+      </header>
+      <div class="wizard-body" id="wizard-body"></div>
+      <div class="wizard-nav">
+        <button type="button" id="wizard-back">BACK</button>
+        <span class="wizard-dots" id="wizard-dots"></span>
+        <button type="button" id="wizard-next" class="primary">NEXT</button>
       </div>
     </section>
   </main>

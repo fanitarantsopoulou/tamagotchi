@@ -167,6 +167,8 @@ const ICON_ART = {
   outfit: ["...##...", "..#..#..", ".....#..", "....#...", "...##...", ".##..##.", "#......#", "########"],
   mirror: ["..####..", ".#....#.", ".#.#..#.", ".#....#.", "..####..", "...##...", "...##...", "...##..."],
   weather: ["........", "..##....", ".####.#.", "########", "########", ".######.", "........", "........"],
+  music: ["....##..", "....#.#.", "....#..#", "....#...", "....#...", ".###....", "####....", ".##....."],
+  setup: ["...##...", ".#.##.#.", "..####..", "###..###", "###..###", "..####..", ".#.##.#.", "...##..."],
   calendar: [".#....#.", "########", "########", "#......#", "#.##.#.#", "#......#", "#.#.##.#", "########"],
 };
 
@@ -180,7 +182,9 @@ const ICONS = [
   { id: "outfit", row: "bottom" },
   { id: "mirror", row: "bottom" },
   { id: "weather", row: "bottom" },
+  { id: "music", row: "bottom" },
   { id: "calendar", row: "bottom" },
+  { id: "setup", row: "bottom" },
 ];
 const SELECTABLE = ICONS; // every icon is a function you can select
 
@@ -399,6 +403,8 @@ async function runIcon(icon) {
   if (icon.id === "mirror") return openMirror();
   if (icon.id === "weather") return openWeather();
   if (icon.id === "calendar") return openCalendar();
+  if (icon.id === "setup") return openWizard();
+  if (icon.id === "music") return toggleWalkman();
 
   try {
     const { pet, message } = await api(`/pet/${ACTION_FOR[icon.id]}`, { method: "POST" });
@@ -475,13 +481,14 @@ async function press(btn) {
 document.querySelectorAll("[data-btn]").forEach((el) => el.addEventListener("click", () => press(el.dataset.btn)));
 document.addEventListener("keydown", (e) => {
   // While typing in the chat, keys belong to the input (Esc still closes the chat).
-  if (e.target.closest?.(".chat, .window")) {
+  if (e.target.closest?.(".chat, .window, .walkman")) {
     if (e.key === "Escape") {
       closeChat();
       closeOutfits();
       closeMirror();
       closeWeather();
       closeCalendar();
+      closeWizard();
     }
     return;
   }
@@ -517,6 +524,7 @@ async function openChat() {
   closeMirror();
   closeWeather();
   closeCalendar();
+  closeWizard();
   chatEl.hidden = false;
   chatInput.focus();
   if (chatHistory.length) return;
@@ -651,6 +659,7 @@ async function openOutfits() {
   closeMirror();
   closeWeather();
   closeCalendar();
+  closeWizard();
   outfitsEl.hidden = false;
   try {
     const [presets, current] = await Promise.all([api("/theme/presets"), api("/theme")]);
@@ -799,6 +808,7 @@ async function openMirror() {
   closeOutfits();
   closeWeather();
   closeCalendar();
+  closeWizard();
   mirrorEl.hidden = false;
   mirror.useFile = false;
   mirror.photo = null;
@@ -985,6 +995,7 @@ async function openWeather() {
   closeOutfits();
   closeMirror();
   closeCalendar();
+  closeWizard();
   weatherEl.hidden = false;
   await loadWeather(wx.city);
 }
@@ -1052,6 +1063,7 @@ async function openCalendar() {
   closeOutfits();
   closeMirror();
   closeWeather();
+  closeWizard();
   calendarEl.hidden = false;
   calendarPick = null;
   calendarWear.disabled = true;
@@ -1082,6 +1094,304 @@ async function askWhatToWearFor() {
 
 calendarWear.addEventListener("click", askWhatToWearFor);
 document.getElementById("calendar-close").addEventListener("click", closeCalendar);
+
+// ---------- Spotify walkman: what's playing now ----------
+// Polls the backend every few seconds (the backend caches Spotify calls); the progress bar moves
+// smoothly in between. Hidden entirely until Spotify is connected.
+const walkman = {
+  el: document.getElementById("walkman"),
+  title: document.getElementById("walkman-title"),
+  artist: document.getElementById("walkman-artist"),
+  bar: document.getElementById("walkman-bar"),
+  toggle: document.getElementById("walkman-toggle"),
+  art: document.getElementById("walkman-art"),
+  track: null,
+  syncedAt: 0,
+  artUrl: null,
+};
+
+// Album art drawn into a 20x20 canvas and scaled up: a pixel-art cover that fits the look.
+function drawWalkmanArt(url) {
+  if (url === walkman.artUrl) return;
+  walkman.artUrl = url;
+  const g = walkman.art.getContext("2d");
+  g.clearRect(0, 0, 20, 20);
+  if (!url) return;
+  const img = new Image();
+  img.onload = () => g.drawImage(img, 0, 0, 20, 20);
+  img.src = url;
+}
+
+function renderWalkman() {
+  const t = walkman.track;
+  walkman.el.classList.toggle("playing", !!t?.is_playing);
+  walkman.toggle.textContent = t?.is_playing ? "❚❚" : "▶";
+  if (!t) {
+    walkman.bar.style.width = "0";
+    return;
+  }
+  const elapsed = t.is_playing ? Date.now() - walkman.syncedAt : 0;
+  const progress = Math.min(1, (t.progress_ms + elapsed) / (t.duration_ms || 1));
+  walkman.bar.style.width = `${progress * 100}%`;
+}
+
+// The user can close the walkman (×) and bring it back from the music icon; the choice is
+// remembered in this browser only.
+function walkmanClosed() {
+  try {
+    return localStorage.getItem("walkmanClosed") === "true";
+  } catch {
+    return false;
+  }
+}
+
+function setWalkmanClosed(closed) {
+  try {
+    localStorage.setItem("walkmanClosed", String(closed));
+  } catch {
+    /* storage may be blocked; the choice just won't be remembered */
+  }
+}
+
+function toggleWalkman() {
+  const close = !walkmanClosed();
+  setWalkmanClosed(close);
+  if (close) walkman.el.hidden = true;
+  else refreshWalkman();
+  say(close ? "MUSIC OFF" : "MUSIC ON");
+}
+
+async function refreshWalkman() {
+  if (walkmanClosed()) {
+    walkman.el.hidden = true;
+    return; // no polling while it's closed
+  }
+  try {
+    const data = await api("/spotify/now-playing");
+    walkman.el.hidden = !data.configured;
+    if (!data.configured) return;
+    walkman.track = data.track;
+    walkman.syncedAt = Date.now();
+    const t = data.track;
+    const title = t ? t.title : data.error || "Nothing playing";
+    if (walkman.title.textContent !== title) {
+      walkman.title.textContent = title;
+      // scroll long titles like an old LCD marquee
+      walkman.title.parentElement.classList.toggle("scroll", title.length > 18);
+    }
+    walkman.artist.textContent = t ? t.artists : "";
+    drawWalkmanArt(t?.image || null);
+    renderWalkman();
+  } catch {
+    walkman.el.hidden = true;
+  }
+}
+
+document.getElementById("walkman-close").addEventListener("click", () => {
+  play("click");
+  setWalkmanClosed(true);
+  walkman.el.hidden = true;
+});
+
+document.querySelectorAll("[data-sp]").forEach((btn) =>
+  btn.addEventListener("click", async () => {
+    play("click");
+    let action = btn.dataset.sp;
+    if (action === "toggle") action = walkman.track?.is_playing ? "pause" : "play";
+    try {
+      await api(`/spotify/${action}`, { method: "POST" });
+    } catch (e) {
+      say(e.message.includes("device") ? "OPEN SPOTIFY" : "OOPS");
+    }
+    setTimeout(refreshWalkman, 700); // give Spotify a moment to switch tracks
+  })
+);
+refreshWalkman();
+setInterval(refreshWalkman, 5000);
+setInterval(renderWalkman, 1000);
+
+// ---------- Onboarding: SETUP.EXE wizard ----------
+// Shown automatically the first time (no profile yet) and reopened from the gear icon.
+// Steps: welcome -> how to keep me alive -> controls -> names -> personality -> done.
+const wizard = {
+  el: document.getElementById("wizard"),
+  body: document.getElementById("wizard-body"),
+  dots: document.getElementById("wizard-dots"),
+  back: document.getElementById("wizard-back"),
+  next: document.getElementById("wizard-next"),
+  step: 0,
+  answers: { pet_name: "Mochi", user_name: "", personality: "sassy" },
+  personalities: [],
+};
+
+const ICON_HELP = {
+  feed: "feed", light: "light / sleep", play: "play", clean: "clean up",
+  stats: "stats", chat: "chat with me", outfit: "outfits", mirror: "mirror",
+  weather: "weather", music: "show/hide walkman", calendar: "calendar", setup: "this setup",
+};
+
+function para(text) {
+  return el("p", "", text);
+}
+
+const WIZARD_STEPS = [
+  {
+    render(body) {
+      const egg = pixelCanvas(S.egg, "wiz-egg");
+      body.append(egg, el("h2", "", "Hi! I'm your TAMA SMART"));
+      body.append(para("A 90s-style virtual pet that lives on your screen, and an AI bestie that helps you with outfits, makeup, the weather, your plans and music."));
+      body.append(para("Let's set me up. It takes a minute!"));
+    },
+  },
+  {
+    render(body) {
+      body.append(el("h2", "", "Keep me alive"));
+      body.append(para("Feed me, play with me, clean up after me and turn the light off when I sleep."));
+      body.append(para("My stats drop over time, even when the app is closed. Forget me for too long and I get sick (or worse!)."));
+      body.append(para("The little ! light on my frame blinks when I need you."));
+    },
+  },
+  {
+    render(body) {
+      body.append(el("h2", "", "How to use me"));
+      const keys = para("");
+      keys.className = "wiz-keys";
+      keys.append(el("b", "", "A"), " next icon · ", el("b", "", "B"), " select · ", el("b", "", "C"), " back. Or just click the icons. ‹ › show more icons.");
+      body.append(keys);
+      const grid = el("div", "wiz-icons");
+      ICONS.forEach((icon) => {
+        const row = el("div");
+        row.append(pixelCanvas(ICON_ART[icon.id], ""), ICON_HELP[icon.id] || icon.id);
+        grid.append(row);
+      });
+      body.append(grid);
+    },
+  },
+  {
+    render(body) {
+      body.append(el("h2", "", "Names"));
+      const petLabel = el("label", "", "What's my name?");
+      const petInput = el("input");
+      petInput.maxLength = 12;
+      petInput.value = wizard.answers.pet_name;
+      petInput.addEventListener("input", () => (wizard.answers.pet_name = petInput.value));
+      const userLabel = el("label", "", "And what should I call you?");
+      const userInput = el("input");
+      userInput.maxLength = 20;
+      userInput.placeholder = "your name or nickname";
+      userInput.value = wizard.answers.user_name;
+      userInput.addEventListener("input", () => (wizard.answers.user_name = userInput.value));
+      body.append(petLabel, petInput, userLabel, userInput);
+      setTimeout(() => petInput.focus(), 50);
+    },
+    valid: () => wizard.answers.pet_name.trim() && wizard.answers.user_name.trim(),
+  },
+  {
+    render(body) {
+      body.append(el("h2", "", "My personality"), para("How should I talk to you? You can change it later from the gear icon."));
+      const cards = el("div", "wiz-cards");
+      wizard.personalities.forEach((option) => {
+        const card = el("button", "wiz-card" + (option.id === wizard.answers.personality ? " active" : ""));
+        card.append(option.label, el("small", "", option.description));
+        card.addEventListener("click", () => {
+          wizard.answers.personality = option.id;
+          cards.querySelectorAll(".wiz-card").forEach((c) => c.classList.toggle("active", c === card));
+          play("click");
+        });
+        cards.append(card);
+      });
+      body.append(cards);
+    },
+  },
+  {
+    render(body) {
+      const chosen = wizard.personalities.find((o) => o.id === wizard.answers.personality);
+      body.append(pixelCanvas(S.egg, "wiz-egg"), el("h2", "", `Nice to meet you, ${wizard.answers.user_name.trim()}!`));
+      body.append(para(`I'm ${wizard.answers.pet_name.trim()}, your ${chosen ? chosen.label.toLowerCase() : "new"} Tamagotchi.`));
+      body.append(para("Open the chat any time to talk to me, ask for outfits, or just say hi."));
+    },
+  },
+];
+
+function renderWizard() {
+  const step = WIZARD_STEPS[wizard.step];
+  wizard.body.replaceChildren();
+  step.render(wizard.body);
+  wizard.dots.replaceChildren(...WIZARD_STEPS.map((_, i) => el("i", i <= wizard.step ? "on" : "")));
+  wizard.back.disabled = wizard.step === 0;
+  wizard.next.textContent = wizard.step === WIZARD_STEPS.length - 1 ? "START!" : "NEXT";
+}
+
+async function openWizard() {
+  closeChat();
+  closeOutfits();
+  closeMirror();
+  closeWeather();
+  closeCalendar();
+  try {
+    const profile = await api("/profile");
+    wizard.personalities = profile.personalities;
+    wizard.answers = {
+      pet_name: profile.pet_name || "Mochi",
+      user_name: profile.onboarded ? profile.user_name : "",
+      personality: profile.personality,
+    };
+  } catch {
+    /* keep the defaults */
+  }
+  wizard.step = 0;
+  wizard.el.hidden = false;
+  renderWizard();
+}
+
+function closeWizard() {
+  wizard.el.hidden = true;
+}
+
+async function finishWizard() {
+  const { pet_name, user_name, personality } = wizard.answers;
+  try {
+    const { pet } = await api("/onboarding", {
+      method: "POST",
+      body: JSON.stringify({ pet_name: pet_name.trim() || "Mochi", user_name: user_name.trim() || "bestie", personality }),
+    });
+    setPet(pet);
+    chatHistory.length = 0; // the next chat starts with the new greeting
+    chatLog.replaceChildren();
+    closeWizard();
+    play("hatch");
+    say(`HI ${user_name.trim().toUpperCase().slice(0, 10)}!`, 2500);
+  } catch (e) {
+    wizard.body.append(el("p", "wx-error", e.message));
+  }
+}
+
+wizard.next.addEventListener("click", () => {
+  const step = WIZARD_STEPS[wizard.step];
+  if (step.valid && !step.valid()) {
+    play("error");
+    return;
+  }
+  play("click");
+  if (wizard.step === WIZARD_STEPS.length - 1) return finishWizard();
+  wizard.step += 1;
+  renderWizard();
+});
+wizard.back.addEventListener("click", () => {
+  play("click");
+  wizard.step = Math.max(0, wizard.step - 1);
+  renderWizard();
+});
+// Closing the wizard the first time keeps the defaults; it can be reopened from the gear icon.
+document.getElementById("wizard-close").addEventListener("click", closeWizard);
+wizard.el.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.tagName === "INPUT") wizard.next.click();
+});
+
+// First visit: no profile yet -> show the wizard.
+api("/profile")
+  .then((profile) => !profile.onboarded && openWizard())
+  .catch(() => {});
 
 // ---------- voice: speech-to-text in, text-to-speech out (all in the browser) ----------
 const VOICE_LANG = "el-GR";

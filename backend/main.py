@@ -12,6 +12,8 @@ import chat
 import mirror
 import outfit_of_day
 import pet
+import owner_profile
+import spotify_client
 import theme
 import weather
 
@@ -66,7 +68,7 @@ class ChatRequest(BaseModel):
 @app.get("/api/chat/greeting")
 def chat_greeting():
     """Return the line the pet opens every chat with."""
-    return {"message": chat.GREETING}
+    return {"message": chat.greeting()}
 
 
 @app.post("/api/chat")
@@ -127,6 +129,31 @@ def reset_theme():
     return theme.reset()
 
 
+# ---------- Onboarding / profile ----------
+class OnboardingAnswers(BaseModel):
+    pet_name: str = Field(min_length=1, max_length=12)
+    user_name: str = Field(min_length=1, max_length=owner_profile.MAX_NAME)
+    personality: str
+
+
+@app.get("/api/profile")
+def get_profile():
+    """The owner's profile (has onboarding been done?) and the personalities to choose from."""
+    return {**owner_profile.load(), "pet_name": pet.get_state()["name"], "personalities": owner_profile.options()}
+
+
+@app.post("/api/onboarding")
+def finish_onboarding(body: OnboardingAnswers):
+    """Save the onboarding answers and name the pet (a dead pet is replaced by a new egg)."""
+    try:
+        saved = owner_profile.save(body.user_name, body.personality)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    current = pet.get_state()
+    new_pet = pet.rename(body.pet_name) if current["alive"] else pet.reset(body.pet_name)
+    return {"profile": saved, "pet": new_pet}
+
+
 # ---------- Weather ----------
 @app.get("/api/weather")
 def get_weather(city: str = "", days: int = 7):
@@ -147,6 +174,30 @@ def get_calendar(days: int = 7):
         return {"days": calendar_reader.agenda(None, days)}
     except calendar_reader.CalendarUnavailable as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+
+# ---------- Spotify (walkman) ----------
+@app.get("/api/spotify/now-playing")
+def spotify_now_playing():
+    """What's playing right now, for the walkman on the page."""
+    if not spotify_client.is_configured():
+        return {"configured": False, "track": None}
+    try:
+        return {"configured": True, "track": spotify_client.now_playing()}
+    except spotify_client.SpotifyError as e:
+        return {"configured": True, "track": None, "error": str(e)}
+
+
+@app.post("/api/spotify/{action}")
+def spotify_control(action: str):
+    """Walkman buttons: play / pause / next / previous (needs Premium)."""
+    if action not in ("play", "pause", "next", "previous"):
+        raise HTTPException(status_code=404, detail="Unknown action")
+    try:
+        spotify_client.control(action)
+    except spotify_client.SpotifyError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    return {"ok": True}
 
 
 # ---------- Mirror mode ----------
