@@ -6,3 +6,4 @@ backend/data/*.db
 backend/data/*.db-*
 .DS_Store
 secrets/
+.pytest_cache/
