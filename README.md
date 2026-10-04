@@ -3,7 +3,7 @@
 # ♥ TAMA SMART ♥
 
 **A 90s virtual pet with a 2020s brain.**
-A pixel-perfect Tamagotchi that lives in your browser and doubles as an AI bestie for outfits, makeup, weather, plans and music.
+A pixel-perfect Tamagotchi that lives in your browser and doubles as an AI bestie for outfits, makeup, weather, plans, music, notes, focus and books.
 
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688?style=for-the-badge&logo=fastapi&logoColor=white)
@@ -24,7 +24,7 @@ A pixel-perfect Tamagotchi that lives in your browser and doubles as an AI besti
 
 TAMA SMART is a niche side project: a **Tamagotchi-style virtual pet** (feed, play, sleep, clean, watch its stats) built with a plain **HTML / CSS / JavaScript** frontend and a **Python FastAPI** backend.
 
-Behind the pixels, the pet talks through the **Anthropic API (Claude Haiku 4.5)** and acts as a personal assistant with a personality: it knows your makeup bag and closet, checks the real weather and your calendar before suggesting an outfit, reads your Notion and Gmail, puts on the right Spotify playlist, and can even look at a photo of what you're wearing.
+Behind the pixels, the pet talks through the **Anthropic API (Claude Haiku 4.5)** and acts as a personal assistant with a personality: it knows your makeup bag and closet, checks the real weather and your calendar before suggesting an outfit, reads your Notion and Gmail, puts on the right Spotify playlist, searches your own notes, remembers the little things you tell it, and can even look at a photo of what you're wearing. Around the device sit a walkman, a Pomodoro clock and a pile of the books you're reading.
 
 Everything runs in a **Docker** container on a Mac and is reachable from the phone over **Tailscale** (private HTTPS, only on your own devices).
 
@@ -39,6 +39,7 @@ Everything runs in a **Docker** container on a Mac and is reachable from the pho
 - [Privacy & security](#-privacy--security)
 - [Roadmap](#-roadmap)
 - [Design inspiration](#-design-inspiration)
+- [License](#-license)
 
 ---
 
@@ -49,6 +50,9 @@ Everything runs in a **Docker** container on a Mac and is reachable from the pho
 - **Life stages:** egg → baby → child → adult, each with its own pixel sprite.
 - **Moods with real feedback:** happy, hungry, tired, sad, sick, thinking, curious… each mood changes the pet's **face, movement and LCD effects** (tears, a food thought bubble, a blinking skull, "z"s) and plays its own **8-bit piezo-buzzer tune**, like the original 90s devices.
 - **Authentic controls:** A / B / C buttons (or ← / Enter / Esc), a paged icon bar with ‹ › arrows, and an attention LED on the frame that blinks when the pet needs you.
+
+### 🎬 Opening effect
+- The page doesn't just pop up: a **pixel-block dissolve** in the colors of your current outfit uncovers it, then the device and the side panels drop in with stepped, 8-bit-style animations. It lasts under a second and is skipped when the system asks for reduced motion.
 
 ### 💬 An AI bestie in the chat (CHAT.EXE)
 - Powered by **Claude Haiku 4.5** with **tool use**: the model decides when it needs data and calls small Python functions to get it.
@@ -94,7 +98,7 @@ Everything runs in a **Docker** container on a Mac and is reachable from the pho
 - Photos are validated, shrunk to 1024 px **in memory** and **never stored**.
 
 ### 🎵 Spotify (TAMA♥WALK)
-- A retro **walkman** next to the device shows what's playing: pixelated album art, a scrolling title, spinning cassette reels, a progress bar and ◀◀ ❚❚ ▶▶ controls. Close it with × and bring it back from the ♪ icon.
+- A retro **walkman** next to the device shows what's playing: pixelated album art, a scrolling title, spinning cassette reels, a progress bar and ◀◀ ❚❚ ▶▶ controls. Minimize it to its title bar (with a small play/pause) or close it with × and bring it back from the ♪ icon.
 - In the chat: "put on some music for my cozy outfit" → the pet turns the mood into search words, finds a playlist and plays it (Spotify Premium).
 
 <div align="center">
@@ -129,6 +133,34 @@ Everything runs in a **Docker** container on a Mac and is reachable from the pho
 - In the chat the pet searches the notes when a question might be answered by them, **cites the book and chapter** it used (with a link to the note), and can save an answer on request: *"αποθήκευσε αυτό στο βιβλίο Προγραμματισμός, κεφάλαιο Python"*.
 - Books or chapters can be marked **private**: they're excluded from the chat and its search at the SQL level.
 
+### 🧠 Memory (MEMORY.EXE)
+- The pet **remembers personal facts** you tell it ("my team lead is Maria", "I'm watching Severance"), grouped into categories: me, work, colleagues, friends, family, watching, likes and other.
+- In the chat it uses four tools (`recall`, `remember`, `update_memory`, `forget`) and looks facts up **only when a question needs them**, so they don't fill every prompt. It forgets something only when you clearly ask.
+- MEMORY.EXE lists everything it knows, with editing, deleting and a **private** flag: private facts are hidden from the chat.
+
+### ⏰ Clock & focus timer (TAMA♥CLOCK)
+- A pixel clock under the walkman, **analog or digital**, that wears the current outfit: theme colors plus the motif's sprites in the corners (pumpkins at Halloween, trees at Christmas…). Minimize or close it like the walkman; the clock icon brings it back.
+- **FOCUS** turns it into a **Pomodoro timer**: 25' to 90' focus presets, 5' breaks and a 15' long break after every 4th round. The timer runs on an end timestamp, so it survives a page refresh.
+- **Focus mode on the page:** a warm desk-lamp light falls on the device, the countdown ticks in the browser tab title (🍅 / ☕), and the **pet sits and reads a book**, turning a page every few seconds. A round ends with pixel confetti, a cheer from the pet and, if the tab is in the background, a desktop notification.
+
+<div align="center">
+<img src="docs/images/focus-mode.jpg" alt="Focus mode: the page dims, a desk lamp lights the device and the clock shows the Pomodoro countdown while the pet reads" width="760">
+
+<sub><i><b>Focus mode</b> in the <b>summer</b> outfit: the wallpaper dims, a warm desk-lamp glow falls on the device, <b>TAMA♥CLOCK</b> counts down the focus round and the pet sits reading a book.</i></sub>
+</div>
+
+### 📖 Reading shelf (MY♥SHELF)
+- A **pile of real-looking books** along the left edge of the page: each spine has its own cover color, thickness, length and lettering, and slides out to the right when you point at it. A new shelf starts full of blank books, to title or delete.
+- Every book has a title, an author, a status (**read**, **reading now**, **on the shelf**) and a **1–5 heart rating**. Books you're reading carry a bookmark ribbon.
+- Pick any **cover color** from swatches or a color picker, with a **live preview** on the book; it's only saved on SAVE.
+- A small box on top shows **stats** (read / reading / on the shelf) and a comment on them (*"Wow! A lot of books are getting dusty..."*). The ◀ button slides the whole pile off to the left, one book after another; ▶ brings it back.
+
+<div align="center">
+<img src="docs/images/reading-shelf.jpg" alt="MY♥SHELF: a pile of colorful book spines on the left edge of the page, with a stats box on top" width="760">
+
+<sub><i><b>MY♥SHELF</b> with demo books: every spine gets its own color, size and lettering, read books show their heart rating, books in progress carry a bookmark ribbon, and the box on top counts what's read, being read and waiting on the shelf.</i></sub>
+</div>
+
 ### 📱 Works on the phone
 - Served over **HTTPS through Tailscale**, so the camera and microphone work on the iPhone too. On small screens the windows open as a bottom panel.
 
@@ -149,13 +181,15 @@ flowchart LR
         THEME["theme.py<br/>theme classifier"]
         MIRROR["mirror.py<br/>vision"]
         CP["context_providers/<br/>weather · calendar · spotify"]
-        DATA[("data/*.json<br/>pet, closet, theme, profile")]
+        KB["library/ · memory/<br/>SQLite + FTS5"]
+        SHELF["reading/<br/>reading shelf"]
+        DATA[("data/*.json · *.db<br/>pet, closet, theme, profile,<br/>books, notes, memories")]
     end
 
     UI <-- "HTTPS (Tailscale)" --> API
-    API --> PET & CHAT & THEME & MIRROR
-    CHAT --> CP
-    PET & CHAT --> DATA
+    API --> PET & CHAT & THEME & MIRROR & SHELF
+    CHAT --> CP & KB
+    PET & CHAT & KB & SHELF --> DATA
     CHAT & THEME & MIRROR --> CLAUDE["Anthropic API<br/>Claude Haiku 4.5"]
     CP --> EXT["Open-Meteo · Google Calendar<br/>Gmail · Notion · Spotify"]
 ```
@@ -165,6 +199,7 @@ flowchart LR
 - **Context providers.** Each outside source (weather, calendar, Spotify) is a small `ContextProvider` with its own tools and prompt section. Adding one (e.g. a habit tracker) is a new file plus one line in a list; the chat core doesn't change.
 - **Registries over code.** Themes (`PRESETS`) and personalities (`PERSONALITIES`) are data: the classifier prompt, the JSON schema, the outfit list and the wizard are all generated from them.
 - **Structured outputs** for the theme classifier and Mirror mode, so their JSON is always valid.
+- **Facts on demand.** Personal memories are a tool the model calls, not a block pasted into every prompt: cheaper, and only the relevant facts leave the machine.
 - **Swappable search.** The library's full-text search (SQLite FTS5 with accent-insensitive prefix matching, so Greek word endings match) sits behind a small `SearchBackend` interface; a vector store / RAG backend can replace it without touching the rest. Only the few notes a search picks for a question are sent to the model, never the whole library.
 - **Safe persistence.** Atomic, uniquely named temp-file writes plus locks, after a real race condition corrupted a JSON file under concurrent requests.
 
@@ -199,15 +234,22 @@ tamagotchi/
 │   ├── google_auth.py          # one Google login for Gmail + Calendar
 │   ├── context_providers/      # pluggable chat context (weather, calendar, spotify)
 │   ├── library/                # knowledge base: SQLite store, FTS5 search, importer, chat tools, routes
+│   ├── memory/                 # personal facts: SQLite + FTS5 store, chat tools, routes
+│   ├── reading/                # reading shelf: JSON store and routes
+│   ├── telegram_client.py, notifier.py, notification_providers/  # Telegram notifications
 │   ├── storage.py, settings.py # safe JSON writes, config loading
-│   └── data/                   # runtime JSON state + library.db (git-ignored)
+│   └── data/                   # runtime JSON state + library.db, memory.db (git-ignored)
 ├── frontend/
 │   ├── index.html, style.css
 │   ├── app.js                  # device, LCD rendering, windows, chat, voice
 │   ├── library.js              # LIBRARY.EXE: shelf, open book, editor, imports
+│   ├── memory.js               # MEMORY.EXE
+│   ├── clock.js                # TAMA♥CLOCK: analog / digital clock, Pomodoro, focus mode
+│   ├── shelf.js                # MY♥SHELF: the reading pile
+│   ├── intro.js                # opening pixel-dissolve effect
 │   ├── themes.js               # theme colors, wallpaper, LCD effects
 │   └── vendor/                 # marked, DOMPurify, highlight.js (served locally)
-├── config/settings.json        # home city for the weather
+├── config/settings.json        # home city, notification quiet hours and digest time
 ├── docs/images/                # README screenshots & inspiration
 ├── Dockerfile, docker-compose.yml
 └── .env.example                # API keys template (real .env is git-ignored)
@@ -304,12 +346,13 @@ After adding keys to `.env`, run `docker compose up -d --force-recreate`.
 - **Least privilege.** Gmail and Calendar are read-only; Spotify asks for 3 playback scopes; Notion only sees the pages you share.
 - **No photo storage.** Mirror photos exist only in memory for one request.
 - **Prompt-injection aware.** Text from emails, pages, events or images is treated as information, never as instructions; destructive actions only happen on the user's own request.
+- **Memories stay local too.** Personal facts live in a SQLite file next to the library; private ones never reach the chat, and the pet only deletes one when you ask.
 - **Library notes stay local.** They live in a SQLite file on the Docker volume, are never logged (searches are POSTed so queries stay out of access logs), and imported files are read in memory only. The chat sees book/chapter titles and only the notes a search picks for the current question; private books and chapters never reach it.
 - **What leaves the machine:** chat messages, and any data the pet reads to answer them, are sent to the Anthropic API.
 
 ## 🗺️ Roadmap
 
-The full list of implemented and planned features lives in [issue #6](https://github.com/fanitarantsopoulou/tamagotchi/issues/6). Next up: Notion task reminders, habit tracking with streaks, long-term chat memory, and maybe a Raspberry Pi / cyberdeck build.
+The full list of implemented and planned features lives in [issue #6](https://github.com/fanitarantsopoulou/tamagotchi/issues/6). Next up: focus statistics and streaks, study sessions linked to the library (quiz questions from your notes during breaks), two-way Telegram chat, and maybe a Raspberry Pi / cyberdeck build.
 
 ## 🎨 Design inspiration
 
@@ -327,6 +370,10 @@ The look started from a small moodboard. These images are **references only** an
     </td>
   </tr>
 </table>
+
+## 📄 License
+
+Released under the [MIT License](LICENSE).
 
 <div align="center">
 <br>
