@@ -13,6 +13,7 @@ import calendar_reader
 import chat
 from library import routes as library_routes
 from memory import routes as memory_routes
+from reading import routes as reading_routes
 import mirror
 import notifier
 import outfit_of_day
@@ -269,6 +270,9 @@ app.include_router(library_routes.router)
 
 # ---------- Memory (personal facts the pet looks up on demand) ----------
 app.include_router(memory_routes.router)
+
+# ---------- Reading shelf (books you've read, with ratings) ----------
+app.include_router(reading_routes.router)
 
 
 # Must be mounted last so it doesn't shadow the /api routes.

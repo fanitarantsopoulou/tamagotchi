@@ -1521,3 +1521,175 @@ body.intro .side-stack { animation-delay: 0.65s; }
 
 /* ---------- TAMA♥CLOCK: mode buttons under the face, bottom right ---------- */
 .clock-tools { display: flex; justify-content: flex-end; gap: 4px; margin-top: 8px; }
+
+/* ---------- MY♥SHELF: a pile of real-looking books on the left edge of the page ---------- */
+/* The books lie on top of each other, spines to the front, growing up from the bottom; a small
+   box on top holds the title, the stats and the hide/expand button. */
+.reading {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 5;
+  width: 228px;
+  display: flex;
+  flex-direction: column;
+}
+.reading-head {
+  flex: none;
+  margin: 12px 0 16px 10px; /* the gap under it keeps the box clear of the pile */
+  padding: 10px 12px 10px;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.5) 0 1px, transparent 1.2px) 0 0 / 9px 9px,
+    var(--theme-2);
+  border: 4px solid var(--deep-pink);
+  box-shadow: 8px 8px 0 var(--deep-pink), inset 0 -6px 0 rgba(0, 0, 0, 0.15);
+  clip-path: var(--notch);
+  color: #fff;
+}
+.reading-stats { display: flex; gap: 4px; }
+.reading-stats div {
+  flex: 1;
+  padding: 4px 2px;
+  text-align: center;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 2px solid var(--deep-pink);
+}
+.reading-stats b { display: block; font: 12px/1 "Press Start 2P", monospace; }
+.reading-stats span { display: block; margin-top: 3px; font: 6px/1 "Press Start 2P", monospace; }
+.reading-quip { margin: 8px 0 0; font: 7px/1.5 "Press Start 2P", monospace; text-shadow: 1px 1px 0 var(--deep-pink); }
+
+/* hide: the books slide away to the left one after another; expand brings them back */
+.reading.sliding .rbook { transition: transform 0.35s cubic-bezier(0.5, 0, 0.3, 1) var(--delay, 0s); }
+.reading.collapsed .rbook, .reading.collapsed .rbook:hover { transform: translateX(-115%); }
+.reading.collapsed .reading-list { pointer-events: none; }
+.reading-list {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-right: 24px; /* room for a book to slide out to the right (and for the bookmark ribbon) */
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.reading-list::-webkit-scrollbar { display: none; }
+/* the pile rests on the bottom of the page and grows upward (margin, not justify-content, so it still scrolls) */
+.reading-list > :first-child { margin-top: auto; }
+.reading-empty { margin: 0 0 8px; font: 8px/1.6 "Press Start 2P", monospace; color: #fff; text-shadow: 2px 2px 0 var(--deep-pink); }
+
+/* one book: its spine faces us. Thickness, width, colors and lettering vary per book. */
+.rbook {
+  position: relative;
+  flex: none;
+  height: var(--h, 34px);
+  width: var(--w, 190px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 14px 0 16px;
+  color: var(--ink, #fff);
+  text-align: left;
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.22) 0 2px, transparent 2px calc(100% - 3px), rgba(0, 0, 0, 0.3) calc(100% - 3px)),
+    linear-gradient(to right, rgba(0, 0, 0, 0.25) 0 4px, transparent 4px 10px, transparent calc(100% - 6px), rgba(0, 0, 0, 0.2) calc(100% - 6px)),
+    var(--spine);
+  border: 0;
+  border-radius: 1px 3px 3px 1px;
+  box-shadow: 3px 0 0 -0px #f4ead8, 5px 0 0 0 #cdbf9f, 0 3px 4px rgba(0, 0, 0, 0.28); /* page block at the right end */
+  cursor: pointer;
+  transition: transform 0.15s steps(3);
+}
+.rbook::before, .rbook::after { /* two thin bands, like the printed rules on a hardback spine */
+  content: "";
+  position: absolute;
+  top: 5px; bottom: 5px;
+  width: 2px;
+  background: var(--band, rgba(255, 255, 255, 0.55));
+}
+.rbook::before { left: 7px; }
+.rbook::after { right: 7px; }
+.rbook:hover, .rbook:focus-visible { transform: translateX(14px); outline: none; } /* slides out to the right */
+.rbook:focus-visible { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--deep-pink); }
+.rbook-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--face);
+  font-size: var(--size, 13px);
+  letter-spacing: var(--track, 0);
+}
+.rbook-meta { flex: none; font: 8px/1 "Press Start 2P", monospace; letter-spacing: -1px; }
+.rbook.in-progress::before { /* the bookmark ribbon sticking out of the pile while you're mid-book */
+  content: "";
+  left: auto; right: -9px; top: 0; bottom: auto;
+  width: 5px; height: calc(100% + 8px);
+  background: var(--hot-pink);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 4px), 0 100%);
+}
+.rbook.in-progress .rbook-meta { animation: blink 1s steps(1) infinite; }
+
+/* add / edit form: a small card that pops up beside the pile only while you use it */
+.reading-form {
+  position: absolute;
+  left: calc(100% + 10px);
+  bottom: 0;
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: var(--theme-2);
+  border: 4px solid var(--deep-pink);
+  box-shadow: 6px 6px 0 var(--deep-pink);
+  color: #fff;
+  animation: win-open 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.25);
+}
+.reading-form[hidden] { display: none; }
+.reading-form input, .reading-form select {
+  width: 100%;
+  padding: 5px 6px;
+  font: 13px "Tiny5", "VT323", monospace;
+  color: var(--plum);
+  background: #fff;
+  border: 2px solid var(--deep-pink);
+  border-radius: 0;
+}
+.reading-colors { display: flex; flex-wrap: wrap; gap: 4px; }
+.reading-colors button, .reading-colors input {
+  width: 18px; height: 18px; padding: 0;
+  border: 2px solid #fff; border-radius: 0; cursor: pointer;
+}
+.reading-colors button.auto { /* "automatic": a crossed-out white swatch */
+  background: linear-gradient(to top right, #fff calc(50% - 1px), var(--deep-pink) 50%, #fff calc(50% + 1px));
+}
+.reading-colors input { background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); }
+.reading-colors input::-webkit-color-swatch-wrapper { padding: 0; }
+.reading-colors input::-webkit-color-swatch { border: 0; opacity: 0; }
+.reading-colors input.on::-webkit-color-swatch { opacity: 1; }
+.reading-colors .on { outline: 2px solid var(--deep-pink); outline-offset: 1px; border-color: #fff; }
+.reading-rate { display: flex; justify-content: center; gap: 4px; }
+.reading-rate button { padding: 0; font-size: 18px; line-height: 1; color: #fff; background: none; border: 0; cursor: pointer; }
+.reading-rate button.on { color: var(--deep-pink); text-shadow: 1px 1px 0 #fff; }
+.reading-error { font: 7px/1.4 "Press Start 2P", monospace; }
+.reading-actions { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+.reading-actions button {
+  height: 20px; padding: 0 6px;
+  font: 7px/1 "Press Start 2P", monospace;
+  color: var(--deep-pink); background: #fff; border: 2px solid var(--deep-pink); cursor: pointer;
+}
+.reading-actions button[hidden] { display: none; }
+.reading-actions button.primary { color: #fff; background: var(--hot-pink); }
+
+/* not enough room beside the device: the pile joins the normal flow instead of floating */
+@media (max-width: 1150px) {
+  .reading { position: relative; inset: auto; width: 228px; height: 520px; }
+  .reading-form { left: 0; bottom: 100%; margin-bottom: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rbook, .reading.sliding .rbook { transition: none; }
+  .reading-form { animation: none; }
+}

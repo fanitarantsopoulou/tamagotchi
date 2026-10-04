@@ -553,6 +553,8 @@ document.addEventListener("keydown", (e) => {
     }
     return;
   }
+  // Any other text field (e.g. the shelf form) keeps its keys: the device shortcuts would eat a, b, c and space.
+  if (e.target.closest?.("input, textarea, select")) return;
   const map = { ArrowLeft: "A", ArrowRight: "A", a: "A", Enter: "B", " ": "B", b: "B", Escape: "C", c: "C" };
   if (map[e.key]) {
     e.preventDefault();
