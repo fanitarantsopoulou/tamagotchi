@@ -10,7 +10,9 @@
   <link rel="stylesheet" href="vendor/highlight-github.min.css">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="intro">
+  <div class="intro-cover" id="intro" aria-hidden="true"></div>
+  <script src="intro.js"></script>
   <main class="stage">
     <div class="side-stack">
     <!-- Spotify "now playing" as a retro walkman (hidden until Spotify is connected) -->
@@ -49,11 +51,16 @@
       <div class="walkman-top">
         <span class="walkman-brand">TAMA♥CLOCK</span>
         <span class="walkman-right">
-          <button type="button" class="clock-mode" id="clock-mode">DIGI</button>
-          <button type="button" class="clock-mode" id="clock-focus">FOCUS</button>
+          <button type="button" class="walkman-close" id="clock-min" aria-label="Minimize clock" aria-expanded="true" title="Minimize">–</button>
+          <button type="button" class="walkman-close" id="clock-close" aria-label="Close clock" title="Close (reopen from the clock icon)">×</button>
         </span>
       </div>
+      <div class="clock-body"><div class="clock-inner">
       <canvas class="clock-face" id="clock-face" width="56" height="56" role="img"></canvas>
+      <div class="clock-tools">
+        <button type="button" class="clock-mode" id="clock-mode">DIGI</button>
+        <button type="button" class="clock-mode" id="clock-focus">FOCUS</button>
+      </div>
       <div class="clock-controls" id="clock-controls" hidden>
         <div class="clock-presets" role="group" aria-label="Focus length">
           <button type="button" data-preset="25">25'</button>
@@ -68,6 +75,7 @@
         <button type="button" data-action="skip" title="Skip to the next phase">▶▶</button>
         <button type="button" data-action="reset" title="Restart this phase">↺</button>
       </div>
+      </div></div>
     </aside>
     </div>
 

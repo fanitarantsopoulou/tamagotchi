@@ -1482,3 +1482,42 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .focus-lamp, .wallpaper, .device-wrap, .clock, .walkman, .hint { transition: none; }
 }
+
+/* ---------- opening effect (intro.js): pixel dissolve, then the panels pop in step by step ---------- */
+.intro-cover {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #ffb3d4; /* only until intro.js paints the themed checkerboard */
+  pointer-events: none;
+}
+.intro-cover canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
+
+@keyframes pixel-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+body.intro .device-wrap,
+body.intro .side-stack {
+  animation: pixel-in 0.5s steps(5, end) both;
+}
+body.intro .device-wrap { animation-delay: 0.35s; }
+body.intro .side-stack { animation-delay: 0.65s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-cover { display: none; }
+  body.intro .device-wrap, body.intro .side-stack { animation: none; }
+}
+
+/* ---------- TAMA♥CLOCK: minimize (same fold as the walkman) ---------- */
+.clock .walkman-top { transition: margin-bottom 0.22s ease; }
+.clock-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.22s ease, opacity 0.22s ease; }
+.clock-inner { min-height: 0; overflow: hidden; }
+.clock.minimized .clock-body { grid-template-rows: 0fr; opacity: 0; }
+.clock.minimized .walkman-top { margin-bottom: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .clock .walkman-top, .clock-body { transition: none; }
+}
+
+/* ---------- TAMA♥CLOCK: mode buttons under the face, bottom right ---------- */
+.clock-tools { display: flex; justify-content: flex-end; gap: 4px; margin-top: 8px; }

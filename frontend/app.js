@@ -177,6 +177,7 @@ const ICON_ART = {
   setup: ["...##...", ".#.##.#.", "..####..", "###..###", "###..###", "..####..", ".#.##.#.", "...##..."],
   memory: ["..####..", ".#....#.", "#.#..#.#", "#......#", "#.####.#", ".#....#.", "..####..", "...##..."],
   library: ["##.##.#.", "##.##.#.", "##.##.##", "#..#..##", "##.##.##", "##.##.##", "##.##..#", "########"],
+  clock: ["..####..", ".#.##.#.", "#..##..#", "#..###.#", "#......#", "#......#", ".#....#.", "..####.."],
   calendar: [".#....#.", "########", "########", "#......#", "#.##.#.#", "#......#", "#.#.##.#", "########"],
 };
 
@@ -191,6 +192,7 @@ const ICONS = [
   { id: "mirror", row: "bottom" },
   { id: "weather", row: "bottom" },
   { id: "music", row: "bottom" },
+  { id: "clock", row: "bottom" },
   { id: "bell", row: "bottom" },
   { id: "calendar", row: "bottom" },
   { id: "library", row: "bottom" },
@@ -456,6 +458,7 @@ async function runIcon(icon) {
   if (icon.id === "calendar") return openCalendar();
   if (icon.id === "setup") return openWizard();
   if (icon.id === "music") return toggleWalkman();
+  if (icon.id === "clock") return toggleClock();
   if (icon.id === "bell") return openNotifs();
   if (icon.id === "library") return openLibrary();
   if (icon.id === "memory") return openMemory();
@@ -1327,7 +1330,7 @@ const wizard = {
 const ICON_HELP = {
   feed: "feed", light: "light / sleep", play: "play", clean: "clean up",
   stats: "stats", chat: "chat with me", outfit: "outfits", mirror: "mirror",
-  weather: "weather", music: "show/hide walkman", bell: "notifications", calendar: "calendar", setup: "this setup",
+  weather: "weather", music: "show/hide walkman", clock: "show/hide clock", bell: "notifications", calendar: "calendar", setup: "this setup",
   library: "library (your notes)", memory: "what I remember about you",
 };
 

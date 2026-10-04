@@ -319,6 +319,8 @@
       root.setProperty("--theme-2", accent);
       root.setProperty("--theme-3", deep);
       document.documentElement.dataset.motif = theme.motif;
+      // remembered so the opening effect (intro.js) can use them on the next visit, before the theme loads
+      try { localStorage.setItem("tama-intro-colors", JSON.stringify([main, accent])); } catch {}
       showWallpaper(drawWallpaper([main, accent, deep], theme.motif));
       document.dispatchEvent(new CustomEvent("themechange", { detail: theme }));
     },

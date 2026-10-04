@@ -429,6 +429,57 @@
     render();
   }
 
+  // Minimized: only the top bar stays. Remembered per browser, like the walkman.
+  const minBtn = document.getElementById("clock-min");
+  function setMinimized(minimized) {
+    root.classList.toggle("minimized", minimized);
+    minBtn.textContent = minimized ? "□" : "–";
+    minBtn.title = minimized ? "Restore" : "Minimize";
+    minBtn.setAttribute("aria-expanded", String(!minimized));
+    try {
+      localStorage.setItem("clockMinimized", String(minimized));
+    } catch {
+      /* not remembered */
+    }
+  }
+  minBtn.addEventListener("click", () => {
+    play("click");
+    setMinimized(!root.classList.contains("minimized"));
+  });
+  try {
+    if (localStorage.getItem("clockMinimized") === "true") setMinimized(true);
+  } catch {
+    /* storage blocked: start expanded */
+  }
+
+  // Closed (×): hidden until the clock icon on the device brings it back. Remembered per browser.
+  const closed = () => {
+    try {
+      return localStorage.getItem("clockClosed") === "true";
+    } catch {
+      return false;
+    }
+  };
+  function setClosed(value) {
+    try {
+      localStorage.setItem("clockClosed", String(value));
+    } catch {
+      /* not remembered */
+    }
+    if (value) hideWindow(root);
+    else showWindow(root);
+  }
+  window.toggleClock = () => {
+    const close = !closed();
+    setClosed(close);
+    say(close ? "CLOCK OFF" : "CLOCK ON");
+  };
+  document.getElementById("clock-close").addEventListener("click", () => {
+    play("click");
+    setClosed(true);
+  });
+  if (closed()) root.hidden = true;
+
   modeBtn.addEventListener("click", () => flip(() => setMode(mode === "analog" ? "digital" : "analog")));
   focusBtn.addEventListener("click", () => flip(() => setFocusView(!focusView)));
 
