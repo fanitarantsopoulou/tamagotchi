@@ -1,3 +1,5 @@
+import threading
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List, Literal
 
@@ -9,7 +11,11 @@ from pydantic import BaseModel, Field
 
 import calendar_reader
 import chat
+from library import routes as library_routes
+from memory import routes as memory_routes
+from reading import routes as reading_routes
 import mirror
+import notifier
 import outfit_of_day
 import pet
 import owner_profile
@@ -19,7 +25,16 @@ import weather
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
-app = FastAPI(title="Smart Tamagotchi")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Run the notifier in a background thread for as long as the server is up."""
+    stop = threading.Event()
+    threading.Thread(target=notifier.loop_forever, args=(stop,), daemon=True, name="notifier").start()
+    yield
+    stop.set()
+
+
+app = FastAPI(title="Smart Tamagotchi", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -58,7 +73,7 @@ def reset_pet(body: ResetRequest):
 
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]
-    content: str = Field(min_length=1, max_length=2000)
+    content: str = Field(min_length=1, max_length=8000)  # long enough to paste a note to save
 
 
 class ChatRequest(BaseModel):
@@ -154,6 +169,21 @@ def finish_onboarding(body: OnboardingAnswers):
     return {"profile": saved, "pet": new_pet}
 
 
+# ---------- Notifications ----------
+@app.get("/api/notifications")
+def get_notifications():
+    """Recent notifications (the in-app inbox) and whether Telegram is connected."""
+    import telegram_client
+
+    return {"telegram": telegram_client.is_configured(), "inbox": notifier.inbox()}
+
+
+@app.post("/api/notifications/test")
+def test_notification():
+    """Send a test notification now (to the inbox and, if connected, to Telegram)."""
+    return notifier.send_test()
+
+
 # ---------- Weather ----------
 @app.get("/api/weather")
 def get_weather(city: str = "", days: int = 7):
@@ -233,6 +263,16 @@ async def mirror_photo(photo: UploadFile = File(...)):
         return await run_in_threadpool(_review_photo, data)
     except mirror.MirrorError as e:
         raise HTTPException(status_code=422, detail=str(e))
+
+
+# ---------- Library (personal knowledge base) ----------
+app.include_router(library_routes.router)
+
+# ---------- Memory (personal facts the pet looks up on demand) ----------
+app.include_router(memory_routes.router)
+
+# ---------- Reading shelf (books you've read, with ratings) ----------
+app.include_router(reading_routes.router)
 
 
 # Must be mounted last so it doesn't shadow the /api routes.

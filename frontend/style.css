@@ -28,6 +28,22 @@
 
   --px: 4px; /* size of one LCD pixel (screen is 48x32) */
 
+  /* library: book colors and the shelf, partly derived from the theme so they follow it */
+  --book-0: var(--theme-2);
+  --book-1: var(--mauve-3);
+  --book-2: #4f8fc0;
+  --book-3: color-mix(in srgb, var(--theme-3) 85%, black);
+  --book-4: #3e8f7a;
+  --book-5: #d9a441;
+  --book-6: color-mix(in srgb, var(--theme-1) 70%, var(--mauve-3));
+  --book-7: var(--plum);
+  --shelf-back: color-mix(in srgb, var(--theme-1) 25%, #fff6ee);
+  --shelf-wood: color-mix(in srgb, var(--theme-3) 35%, #8a5a3c);
+  --shelf-edge: color-mix(in srgb, var(--shelf-wood) 70%, black);
+  --page-bg: #fffaf2;
+  --page-ink: var(--plum);
+  --page-line: color-mix(in srgb, var(--theme-1) 45%, white);
+
   /* small stepped "pixel" corners, reused on the bezel, LCD, buttons and chat */
   --notch: polygon(
     8px 0, calc(100% - 8px) 0, calc(100% - 8px) 4px, calc(100% - 4px) 4px,
@@ -748,6 +764,18 @@ body {
 }
 .walkman-buttons button:active { transform: translateY(2px); box-shadow: none; }
 
+/* ---------- NOTIFS.EXE (notification inbox) ---------- */
+.notif-status { margin-bottom: 8px; font-size: 13px; }
+.notif-status b { color: var(--deep-pink); }
+.notif {
+  margin-bottom: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+  background: #fff;
+  border: 2px solid var(--deep-pink);
+}
+.notif time { display: block; font-size: 11px; opacity: 0.7; margin-bottom: 2px; }
+
 /* ---------- SETUP.EXE (onboarding wizard) ---------- */
 .wizard { z-index: 30; }
 .wizard-body {
@@ -854,4 +882,814 @@ body {
   .walkman.playing .reel, .marquee.scroll span { animation: none; }
   .device-wrap.transforming, .device-wrap.transforming .device::after { animation: none; }
   .device::after, .attention-led.lit canvas { animation: none; }
+}
+
+/* ---------- LIBRARY.EXE: bookshelf knowledge base ---------- */
+.window.library {
+  position: relative; /* the dialog layer is placed over the window */
+  width: min(600px, 94vw);
+  height: 520px;
+}
+.lib-toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 4px solid var(--deep-pink);
+  background: #fff;
+}
+.lib-search { flex: 1; display: flex; gap: 6px; min-width: 0; }
+.lib-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 15px;
+  color: var(--plum);
+  background: var(--pink-1);
+  border: 3px solid var(--deep-pink);
+  outline: none;
+}
+.lib-search input:focus { background: #fff; }
+.lib-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  font-family: "Press Start 2P", monospace;
+  font-size: 8px;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 3px solid var(--deep-pink);
+  cursor: pointer;
+}
+.lib-btn:hover, .lib-btn:focus-visible { background: var(--pink-1); }
+.lib-btn.primary, .lib-btn.on { color: #fff; background: var(--hot-pink); }
+.lib-btn.danger { color: #b3261e; border-color: #b3261e; }
+.lib-btn.primary.danger { color: #fff; background: #b3261e; }
+.lib-btn:disabled { opacity: 0.5; cursor: wait; }
+
+.lib-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  container-type: inline-size; /* the book switches to one page when the window is narrow */
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 14px;
+  color: var(--page-ink);
+  background: var(--shelf-back);
+}
+.lib-empty, .lib-hint { margin: 12px; opacity: 0.8; }
+.lib-error {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 6px 10px;
+  background: #fff3b8;
+  border-bottom: 3px dashed var(--deep-pink);
+}
+
+/* The shelf: books stand in fixed-height slots, so every row sits on its own plank and rows
+   wrap onto a new shelf when the window is full. The planks are a repeating background. */
+.shelf {
+  --row: 152px;
+  --plank: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  column-gap: 3px;
+  min-height: 100%;
+  padding: 0 14px;
+  background:
+    repeating-linear-gradient(to bottom,
+      transparent 0 calc(var(--row) - var(--plank) - 4px),
+      rgba(0, 0, 0, 0.12) calc(var(--row) - var(--plank) - 4px) calc(var(--row) - var(--plank)),
+      var(--shelf-wood) calc(var(--row) - var(--plank)) calc(var(--row) - 4px),
+      var(--shelf-edge) calc(var(--row) - 4px) var(--row));
+}
+.book-slot {
+  height: var(--row);
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: var(--plank);
+}
+.book-spine {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  padding: 10px 0 8px;
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 13px;
+  color: #fff;
+  background:
+    linear-gradient(to right, rgba(255, 255, 255, 0.25) 0 3px, transparent 3px calc(100% - 4px), rgba(0, 0, 0, 0.25) calc(100% - 4px)),
+    var(--book);
+  border: 2px solid color-mix(in srgb, var(--book) 60%, black);
+  border-bottom: 0;
+  cursor: pointer;
+  transition: transform 0.15s steps(3);
+}
+.book-spine:hover, .book-spine:focus-visible { transform: translateY(-10px); outline: none; }
+.book-spine:focus-visible { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--deep-pink); }
+.spine-band { width: 100%; height: 6px; margin-bottom: 8px; background: rgba(255, 255, 255, 0.45); flex: none; }
+.spine-title {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  max-height: calc(100% - 30px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.35);
+}
+.spine-lock {
+  position: absolute;
+  bottom: 4px;
+  font-family: "Press Start 2P", monospace;
+  font-size: 5px;
+  padding: 1px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.book-new {
+  width: 30px;
+  height: 96px;
+  justify-content: center;
+  font-family: "Press Start 2P", monospace;
+  font-size: 12px;
+  color: var(--deep-pink);
+  background: transparent;
+  border: 3px dashed var(--deep-pink);
+  border-bottom: 0;
+}
+
+/* Opening: a copy of the book flies from the shelf to the window, then its cover swings open. */
+.book-ghost {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  transform-origin: top left;
+  perspective: 900px;
+  background: var(--page-bg);
+  border: 4px solid color-mix(in srgb, var(--book) 60%, black);
+}
+.book-ghost-cover {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  background:
+    linear-gradient(to right, rgba(0, 0, 0, 0.25) 0 10px, transparent 10px),
+    var(--book);
+  transition: transform 0.38s ease-in;
+}
+.book-ghost.opening .book-ghost-cover { transform: rotateY(-100deg); }
+.lib-book.just-opened { animation: book-fade 0.25s ease-out; }
+@keyframes book-fade { from { opacity: 0; } }
+
+/* An open book: table of contents on the left page, the chapter / note on the right page. */
+.lib-book {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--page-bg);
+  border-left: 10px solid var(--book);
+}
+.lib-book-head, .lib-page-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.lib-book-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 6px 8px;
+  background: var(--book);
+  color: #fff;
+}
+.lib-book-head h2, .lib-page-head h3 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: normal;
+}
+.lib-pages {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(130px, 34%) 1fr;
+}
+.lib-page { padding: 10px 12px; min-width: 0; }
+.lib-toc {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-right: 2px solid var(--page-line);
+  /* the gutter's shadow, like the middle of an open book */
+  box-shadow: inset -10px 0 12px -10px rgba(0, 0, 0, 0.25);
+}
+.lib-toc h3 { margin: 0 0 4px; font-size: 13px; font-weight: normal; opacity: 0.7; text-transform: uppercase; }
+.lib-toc-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 6px;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+.lib-toc-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lib-toc-item:hover { border-color: var(--page-line); }
+.lib-toc-item.current { color: #fff; background: var(--book); }
+.lib-toc .lib-btn { margin-top: 6px; align-self: flex-start; }
+.lib-back { display: none; }
+
+.lib-content { display: flex; flex-direction: column; gap: 8px; }
+.lib-content > .lib-btn { align-self: flex-start; }
+.lib-note-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: #fff;
+  border: 2px solid var(--page-line);
+  box-shadow: 3px 3px 0 var(--page-line);
+  cursor: pointer;
+}
+.lib-note-card:hover { border-color: var(--book, var(--deep-pink)); }
+.lib-note-card b { font-weight: normal; font-size: 15px; }
+.lib-note-card span { opacity: 0.8; overflow-wrap: anywhere; }
+.lib-meta { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 0; font-size: 12px; opacity: 0.75; }
+.lib-place { font-size: 12px; color: var(--deep-pink); }
+.lib-tag { font-style: normal; padding: 0 4px; background: var(--pink-1); border: 1px solid var(--page-line); }
+.lib-results { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; min-height: 100%; background: var(--page-bg); }
+
+/* Note text: a readable book font, with Markdown and highlighted code blocks */
+.lib-markdown {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 15px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.lib-markdown h1, .lib-markdown h2, .lib-markdown h3 { font-family: "Tiny5", "VT323", monospace; font-weight: normal; margin: 0.8em 0 0.3em; }
+.lib-markdown p { margin: 0 0 0.6em; }
+.lib-markdown pre {
+  overflow-x: auto;
+  padding: 8px;
+  background: #fff;
+  border: 2px solid var(--page-line);
+}
+.lib-markdown code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+.lib-markdown :not(pre) > code { padding: 0 3px; background: var(--pink-1); }
+.lib-markdown pre code.hljs { padding: 0; background: transparent; }
+.lib-markdown blockquote { margin: 0 0 0.6em; padding-left: 10px; border-left: 4px solid var(--page-line); }
+.lib-markdown a { color: var(--deep-pink); }
+.lib-markdown table { border-collapse: collapse; }
+.lib-markdown td, .lib-markdown th { border: 1px solid var(--page-line); padding: 2px 6px; }
+
+.lib-editor { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.lib-editor input, .lib-editor textarea, .lib-field input, .lib-field select, .lib-field textarea {
+  width: 100%;
+  padding: 4px 6px;
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 15px;
+  color: var(--plum);
+  background: #fff;
+  border: 3px solid var(--deep-pink);
+  outline: none;
+}
+.lib-editor textarea {
+  flex: 1;
+  min-height: 220px;
+  resize: vertical;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.lib-preview { min-height: 220px; padding: 6px; background: #fff; border: 3px dashed var(--page-line); }
+.lib-tabs { display: flex; gap: 4px; }
+
+/* In-window dialogs (confirmations, names, "where should this go?") */
+.lib-dialog {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(61, 35, 87, 0.35);
+}
+.lib-dialog[hidden] { display: none; }
+.lib-dialog-box {
+  width: min(380px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 14px;
+  color: var(--plum);
+  background: #fff;
+  border: 4px solid var(--deep-pink);
+  box-shadow: 6px 6px 0 var(--deep-pink);
+}
+.lib-dialog-box h3 { margin: 0; font-family: "Press Start 2P", monospace; font-size: 10px; color: var(--deep-pink); line-height: 1.4; }
+.lib-dialog-box p { margin: 0; }
+.lib-field { display: flex; flex-direction: column; gap: 3px; }
+.lib-field-checkbox { flex-direction: row; align-items: center; gap: 6px; cursor: pointer; }
+.lib-field-checkbox input { width: 16px; height: 16px; accent-color: var(--hot-pink); }
+.lib-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.lib-swatches input {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  background: var(--book);
+  border: 3px solid #fff;
+  outline: 2px solid color-mix(in srgb, var(--book) 60%, black);
+  cursor: pointer;
+}
+.lib-swatches input:checked { outline: 3px solid var(--deep-pink); }
+.lib-dialog-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 4px; }
+
+/* Narrow window (phones): one page at a time, with a back arrow from the page to the contents. */
+@container (max-width: 480px) {
+  .lib-pages { grid-template-columns: 1fr; }
+  .lib-book.show-page .lib-toc { display: none; }
+  .lib-book:not(.show-page) .lib-content { display: none; }
+  .lib-toc { border-right: 0; box-shadow: none; }
+  .lib-back { display: inline-flex; }
+  .shelf { --row: 136px; padding: 0 8px; }
+}
+@media (max-width: 760px) {
+  .window.library { position: fixed; width: calc(100vw - 16px); height: min(640px, 86vh); bottom: 8px; }
+  .lib-toolbar { flex-wrap: wrap; }
+  .lib-search { flex-basis: 100%; }
+  .lib-search input, .lib-editor input, .lib-editor textarea, .lib-field input, .lib-field select { font-size: 16px; } /* no iOS zoom */
+}
+@media (prefers-reduced-motion: reduce) {
+  .book-spine { transition: none; }
+  .lib-book.just-opened { animation: none; }
+}
+
+/* library bits inside the chat: "+" file button, source links, the "where to save" card */
+.chat-form .chat-attach {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-family: "Press Start 2P", monospace;
+  font-size: 12px;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 3px solid var(--deep-pink);
+  cursor: pointer;
+}
+.msg.note.source { cursor: pointer; text-decoration: underline dotted; }
+.msg.note.source:hover { background: var(--pink-1); }
+.chat-file-card { align-self: flex-start; display: flex; flex-direction: column; gap: 4px; background: #fff; font-size: 14px; }
+.chat-file-card label { display: flex; flex-direction: column; }
+.chat-file-card input { font: inherit; padding: 2px 4px; color: var(--plum); border: 2px solid var(--deep-pink); }
+.chat-file-actions { display: flex; justify-content: flex-end; gap: 4px; }
+.chat-file-actions button {
+  font-family: "Press Start 2P", monospace;
+  font-size: 8px;
+  padding: 4px 6px;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 2px solid var(--deep-pink);
+  cursor: pointer;
+}
+.chat-file-actions button:last-child { color: #fff; background: var(--hot-pink); }
+
+/* a file is being dragged over the library or the chat */
+.drop-target { outline: 4px dashed var(--hot-pink); outline-offset: 4px; }
+
+/* ---------- MEMORY.EXE ---------- */
+.memory-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 10px;
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 14px;
+  color: var(--plum);
+  background: var(--pink-1);
+}
+.memory-cat { margin: 8px 0 4px; font-family: "Press Start 2P", monospace; font-size: 8px; color: var(--deep-pink); }
+.memory-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin-bottom: 4px;
+  padding: 4px 6px;
+  background: #fff;
+  border: 2px solid var(--pink-2);
+}
+.memory-item p { flex: 1; margin: 0; overflow-wrap: anywhere; }
+.memory-item b { font-weight: normal; color: var(--deep-pink); }
+.memory-item .lib-tag { margin-left: 4px; }
+.memory-item .lib-btn { padding: 2px 4px; font-size: 7px; }
+.memory-item .lib-btn.confirm { color: #fff; background: #b3261e; }
+.memory-form { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-top: 4px solid var(--deep-pink); background: #fff; }
+.memory-row { display: flex; gap: 6px; align-items: center; }
+.memory-form select, .memory-form input[name=subject], .memory-form textarea {
+  min-width: 0;
+  padding: 3px 6px;
+  font-family: "Tiny5", "VT323", monospace;
+  font-size: 14px;
+  color: var(--plum);
+  background: var(--pink-1);
+  border: 3px solid var(--deep-pink);
+  outline: none;
+}
+.memory-form input[name=subject] { flex: 1; }
+.memory-form textarea { resize: none; }
+.memory-private { flex: 1; display: flex; align-items: center; gap: 4px; font-family: "Tiny5", "VT323", monospace; font-size: 13px; color: var(--plum); }
+.memory-private input { accent-color: var(--hot-pink); }
+@media (max-width: 760px) {
+  .memory-form select, .memory-form input[name=subject], .memory-form textarea { font-size: 16px; } /* no iOS zoom */
+}
+.lib-btn[hidden] { display: none; }
+
+/* ---------- transitions: windows pop open and shrink away ----------
+   `scale` / `translate` (not `transform`) so they combine with the phone layout's centering. */
+.chat, .window, .walkman { animation: win-open 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.25); }
+.win-closing { animation: win-close 0.16s ease-in forwards; pointer-events: none; }
+@keyframes win-open {
+  from { opacity: 0; scale: 0.88; translate: 0 14px; }
+  to { opacity: 1; scale: 1; translate: 0 0; }
+}
+@keyframes win-close {
+  to { opacity: 0; scale: 0.9; translate: 0 12px; }
+}
+/* the title bar flashes once as the window "powers on" */
+.chat:not(.win-closing) .chat-title, .window:not(.win-closing) .chat-title { animation: title-flash 0.3s steps(2) 1; }
+@keyframes title-flash { 50% { filter: brightness(1.35); } }
+
+/* views inside the library slide in when they change; dialogs pop */
+.shelf, .lib-results, .lib-content { animation: view-in 0.2s ease-out; }
+.lib-dialog:not([hidden]) { animation: fade-in 0.15s ease-out; }
+.lib-dialog-box { animation: win-open 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.25); }
+.memory-item, .chat-file-card { animation: view-in 0.2s ease-out; }
+@keyframes view-in { from { opacity: 0; translate: 0 6px; } }
+@keyframes fade-in { from { opacity: 0; } }
+/* the LCD stats screen switches on in hard steps, like an old display */
+.overlay:not([hidden]) { animation: lcd-on 0.18s steps(3); }
+@keyframes lcd-on { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .chat, .window, .walkman, .win-closing, .chat-title, .shelf, .lib-results, .lib-content, .lib-toc,
+  .lib-dialog, .lib-dialog-box, .memory-item, .chat-file-card, .overlay { animation: none !important; }
+}
+
+/* ---------- walkman: minimize ---------- */
+/* The body folds with a grid-rows transition (0fr <-> 1fr animates to the content's real height). */
+.walkman-top { transition: margin-bottom 0.22s ease; }
+.walkman-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.22s ease, opacity 0.22s ease; }
+.walkman-inner { min-height: 0; overflow: hidden; }
+.walkman.minimized .walkman-body { grid-template-rows: 0fr; opacity: 0; }
+.walkman.minimized .walkman-top { margin-bottom: 0; }
+.walkman-mini-toggle {
+  display: none;
+  height: 18px;
+  padding: 0 4px;
+  font: 8px/1 "Press Start 2P", monospace;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 2px solid var(--deep-pink);
+  cursor: pointer;
+}
+.walkman.minimized .walkman-mini-toggle { display: inline-block; animation: fade-in 0.2s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .walkman-top, .walkman-body { transition: none; }
+}
+
+/* ---------- TAMA♥CLOCK (shares the walkman's shell look) ---------- */
+.side-stack { display: flex; flex-direction: column; align-items: center; gap: 28px; }
+.clock {
+  width: 220px;
+  padding: 10px 12px 12px;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.5) 0 1px, transparent 1.2px) 0 0 / 9px 9px,
+    var(--theme-2);
+  border: 4px solid var(--deep-pink);
+  box-shadow: 8px 8px 0 var(--deep-pink), inset 0 -6px 0 rgba(0, 0, 0, 0.15);
+  clip-path: var(--notch);
+  color: #fff;
+  animation: win-open 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.25);
+}
+.clock-face {
+  display: block;
+  width: 168px; /* 3 screen pixels per clock pixel */
+  height: 168px;
+  margin: 0 auto;
+  image-rendering: pixelated;
+  background: var(--pink-1);
+  border: 3px solid var(--deep-pink);
+  box-shadow: inset 3px 3px 0 rgba(0, 0, 0, 0.12);
+}
+.clock-face.flip { animation: clock-flip 0.18s steps(4); }
+@keyframes clock-flip { 50% { scale: 1 0.1; } }
+.clock-mode {
+  height: 18px;
+  padding: 0 4px;
+  font: 7px/1 "Press Start 2P", monospace;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 2px solid var(--deep-pink);
+  cursor: pointer;
+}
+@media (max-width: 760px) {
+  .side-stack { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .clock, .clock-face.flip { animation: none; }
+}
+
+/* ---------- TAMA♥CLOCK: focus timer controls ---------- */
+.clock-mode[hidden] { display: none; }
+.clock-mode.running { color: #fff; background: var(--hot-pink); animation: blink 1s steps(1) infinite; }
+.clock-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 8px; }
+.clock-controls[hidden] { display: none; }
+.clock-controls button {
+  min-width: 26px;
+  height: 24px;
+  padding: 0 4px;
+  font: 8px/1 "Press Start 2P", monospace;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 2px solid var(--deep-pink);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+.clock-controls button.primary { min-width: 58px; color: #fff; background: var(--hot-pink); }
+.clock-controls button:disabled { opacity: 0.4; cursor: default; }
+.clock-controls button:active { translate: 0 1px; box-shadow: none; }
+.clock-presets { display: flex; justify-content: center; gap: 3px; width: 100%; }
+.clock-controls .clock-presets button { min-width: 0; flex: 1; height: 20px; font-size: 7px; }
+.clock-controls .clock-presets button.on { color: #fff; background: var(--deep-pink); }
+
+/* ---------- focus mode: a desk lamp over the page ----------
+   The room darkens (the lamp layer sits between the wallpaper and the page), the wallpaper
+   softens, and a warm light falls on the device and the clock. Everything else fades back
+   until you point at it. */
+.focus-lamp {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle 420px at var(--lamp-x, 50%) var(--lamp-y, 50%),
+    rgba(255, 214, 140, 0.18), rgba(40, 24, 56, 0.55) 70%, rgba(20, 12, 32, 0.72));
+  transition: opacity 1.2s ease;
+}
+.focus-mode .focus-lamp { opacity: 1; }
+.wallpaper { transition: opacity 1.2s ease, filter 1.2s ease; }
+.focus-mode .wallpaper { filter: blur(2px) saturate(0.7); }
+.device-wrap, .clock, .walkman, .hint { transition: filter 1.2s ease, opacity 0.6s ease; }
+.focus-mode .device-wrap { filter: drop-shadow(8px 8px 0 var(--deep-pink)) drop-shadow(0 0 32px rgba(255, 214, 140, 0.6)); }
+.focus-mode .clock { filter: drop-shadow(0 0 24px rgba(255, 214, 140, 0.5)); }
+.focus-mode .walkman:not(:hover):not(:focus-within),
+.focus-mode .hint:not(:hover) { opacity: 0.3; }
+
+/* finale: pixel confetti falling over the whole page */
+.confetti { position: fixed; inset: 0; z-index: 60; pointer-events: none; overflow: hidden; }
+.confetti i {
+  position: absolute;
+  top: -12px;
+  width: 6px;
+  height: 6px;
+  animation: confetti-fall 2s cubic-bezier(0.3, 0.6, 0.6, 1) forwards;
+}
+.confetti i:nth-child(3n) { width: 4px; height: 8px; }
+@keyframes confetti-fall {
+  to { translate: var(--drift) 105vh; rotate: 540deg; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .focus-lamp, .wallpaper, .device-wrap, .clock, .walkman, .hint { transition: none; }
+}
+
+/* ---------- opening effect (intro.js): pixel dissolve, then the panels pop in step by step ---------- */
+.intro-cover {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #ffb3d4; /* only until intro.js paints the themed checkerboard */
+  pointer-events: none;
+}
+.intro-cover canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
+
+@keyframes pixel-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+body.intro .device-wrap,
+body.intro .side-stack {
+  animation: pixel-in 0.5s steps(5, end) both;
+}
+body.intro .device-wrap { animation-delay: 0.35s; }
+body.intro .side-stack { animation-delay: 0.65s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-cover { display: none; }
+  body.intro .device-wrap, body.intro .side-stack { animation: none; }
+}
+
+/* ---------- TAMA♥CLOCK: minimize (same fold as the walkman) ---------- */
+.clock .walkman-top { transition: margin-bottom 0.22s ease; }
+.clock-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.22s ease, opacity 0.22s ease; }
+.clock-inner { min-height: 0; overflow: hidden; }
+.clock.minimized .clock-body { grid-template-rows: 0fr; opacity: 0; }
+.clock.minimized .walkman-top { margin-bottom: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .clock .walkman-top, .clock-body { transition: none; }
+}
+
+/* ---------- TAMA♥CLOCK: mode buttons under the face, bottom right ---------- */
+.clock-tools { display: flex; justify-content: flex-end; gap: 4px; margin-top: 8px; }
+
+/* ---------- MY♥SHELF: a pile of real-looking books on the left edge of the page ---------- */
+/* The books lie on top of each other, spines to the front, growing up from the bottom; a small
+   box on top holds the title, the stats and the hide/expand button. */
+.reading {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 5;
+  width: 228px;
+  display: flex;
+  flex-direction: column;
+}
+.reading-head {
+  flex: none;
+  margin: 12px 0 16px 10px; /* the gap under it keeps the box clear of the pile */
+  padding: 10px 12px 10px;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.5) 0 1px, transparent 1.2px) 0 0 / 9px 9px,
+    var(--theme-2);
+  border: 4px solid var(--deep-pink);
+  box-shadow: 8px 8px 0 var(--deep-pink), inset 0 -6px 0 rgba(0, 0, 0, 0.15);
+  clip-path: var(--notch);
+  color: #fff;
+}
+.reading-stats { display: flex; gap: 4px; }
+.reading-stats div {
+  flex: 1;
+  padding: 4px 2px;
+  text-align: center;
+  color: var(--deep-pink);
+  background: #fff;
+  border: 2px solid var(--deep-pink);
+}
+.reading-stats b { display: block; font: 12px/1 "Press Start 2P", monospace; }
+.reading-stats span { display: block; margin-top: 3px; font: 6px/1 "Press Start 2P", monospace; }
+.reading-quip { margin: 8px 0 0; font: 7px/1.5 "Press Start 2P", monospace; text-shadow: 1px 1px 0 var(--deep-pink); }
+
+/* hide: the books slide away to the left one after another; expand brings them back */
+.reading.sliding .rbook { transition: transform 0.35s cubic-bezier(0.5, 0, 0.3, 1) var(--delay, 0s); }
+.reading.collapsed .rbook, .reading.collapsed .rbook:hover { transform: translateX(-115%); }
+.reading.collapsed .reading-list { pointer-events: none; }
+.reading-list {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-right: 24px; /* room for a book to slide out to the right (and for the bookmark ribbon) */
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.reading-list::-webkit-scrollbar { display: none; }
+/* the pile rests on the bottom of the page and grows upward (margin, not justify-content, so it still scrolls) */
+.reading-list > :first-child { margin-top: auto; }
+.reading-empty { margin: 0 0 8px; font: 8px/1.6 "Press Start 2P", monospace; color: #fff; text-shadow: 2px 2px 0 var(--deep-pink); }
+
+/* one book: its spine faces us. Thickness, width, colors and lettering vary per book. */
+.rbook {
+  position: relative;
+  flex: none;
+  height: var(--h, 34px);
+  width: var(--w, 190px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 14px 0 16px;
+  color: var(--ink, #fff);
+  text-align: left;
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.22) 0 2px, transparent 2px calc(100% - 3px), rgba(0, 0, 0, 0.3) calc(100% - 3px)),
+    linear-gradient(to right, rgba(0, 0, 0, 0.25) 0 4px, transparent 4px 10px, transparent calc(100% - 6px), rgba(0, 0, 0, 0.2) calc(100% - 6px)),
+    var(--spine);
+  border: 0;
+  border-radius: 1px 3px 3px 1px;
+  box-shadow: 3px 0 0 -0px #f4ead8, 5px 0 0 0 #cdbf9f, 0 3px 4px rgba(0, 0, 0, 0.28); /* page block at the right end */
+  cursor: pointer;
+  transition: transform 0.15s steps(3);
+}
+.rbook::before, .rbook::after { /* two thin bands, like the printed rules on a hardback spine */
+  content: "";
+  position: absolute;
+  top: 5px; bottom: 5px;
+  width: 2px;
+  background: var(--band, rgba(255, 255, 255, 0.55));
+}
+.rbook::before { left: 7px; }
+.rbook::after { right: 7px; }
+.rbook:hover, .rbook:focus-visible { transform: translateX(14px); outline: none; } /* slides out to the right */
+.rbook:focus-visible { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--deep-pink); }
+.rbook-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--face);
+  font-size: var(--size, 13px);
+  letter-spacing: var(--track, 0);
+}
+.rbook-meta { flex: none; font: 8px/1 "Press Start 2P", monospace; letter-spacing: -1px; }
+.rbook.in-progress::before { /* the bookmark ribbon sticking out of the pile while you're mid-book */
+  content: "";
+  left: auto; right: -9px; top: 0; bottom: auto;
+  width: 5px; height: calc(100% + 8px);
+  background: var(--hot-pink);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 4px), 0 100%);
+}
+.rbook.in-progress .rbook-meta { animation: blink 1s steps(1) infinite; }
+
+/* add / edit form: a small card that pops up beside the pile only while you use it */
+.reading-form {
+  position: absolute;
+  left: calc(100% + 10px);
+  bottom: 0;
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: var(--theme-2);
+  border: 4px solid var(--deep-pink);
+  box-shadow: 6px 6px 0 var(--deep-pink);
+  color: #fff;
+  animation: win-open 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.25);
+}
+.reading-form[hidden] { display: none; }
+.reading-form input, .reading-form select {
+  width: 100%;
+  padding: 5px 6px;
+  font: 13px "Tiny5", "VT323", monospace;
+  color: var(--plum);
+  background: #fff;
+  border: 2px solid var(--deep-pink);
+  border-radius: 0;
+}
+.reading-colors { display: flex; flex-wrap: wrap; gap: 4px; }
+.reading-colors button, .reading-colors input {
+  width: 18px; height: 18px; padding: 0;
+  border: 2px solid #fff; border-radius: 0; cursor: pointer;
+}
+.reading-colors button.auto { /* "automatic": a crossed-out white swatch */
+  background: linear-gradient(to top right, #fff calc(50% - 1px), var(--deep-pink) 50%, #fff calc(50% + 1px));
+}
+.reading-colors input { background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); }
+.reading-colors input::-webkit-color-swatch-wrapper { padding: 0; }
+.reading-colors input::-webkit-color-swatch { border: 0; opacity: 0; }
+.reading-colors input.on::-webkit-color-swatch { opacity: 1; }
+.reading-colors .on { outline: 2px solid var(--deep-pink); outline-offset: 1px; border-color: #fff; }
+.reading-rate { display: flex; justify-content: center; gap: 4px; }
+.reading-rate button { padding: 0; font-size: 18px; line-height: 1; color: #fff; background: none; border: 0; cursor: pointer; }
+.reading-rate button.on { color: var(--deep-pink); text-shadow: 1px 1px 0 #fff; }
+.reading-error { font: 7px/1.4 "Press Start 2P", monospace; }
+.reading-actions { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+.reading-actions button {
+  height: 20px; padding: 0 6px;
+  font: 7px/1 "Press Start 2P", monospace;
+  color: var(--deep-pink); background: #fff; border: 2px solid var(--deep-pink); cursor: pointer;
+}
+.reading-actions button[hidden] { display: none; }
+.reading-actions button.primary { color: #fff; background: var(--hot-pink); }
+
+/* not enough room beside the device: the pile joins the normal flow instead of floating */
+@media (max-width: 1150px) {
+  .reading { position: relative; inset: auto; width: 228px; height: 520px; }
+  .reading-form { left: 0; bottom: 100%; margin-bottom: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rbook, .reading.sliding .rbook { transition: none; }
+  .reading-form { animation: none; }
 }

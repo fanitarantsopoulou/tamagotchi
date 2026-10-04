@@ -16,6 +16,8 @@ import outfit_of_day
 import owner_profile
 import gmail_reader
 import notion_reader
+from library import chat_tools as library_tools
+from memory import chat_tools as memory_tools
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
@@ -25,7 +27,7 @@ MAX_TOOL_ROUNDS = 5  # safety cap on tool-call iterations per reply
 # Tools that only fetch information; text the model writes just before calling them is filler.
 LOOKUP_TOOLS = {
     "get_weather", "get_events", "search_notion", "read_notion_page",
-    "list_recent_emails", "read_email", "now_playing", "find_playlists",
+    "list_recent_emails", "read_email", "now_playing", "find_playlists", "search_library", "read_note", "recall",
 }
 TIMEZONE = ZoneInfo(os.environ.get("TZ", "Europe/Athens"))
 
@@ -160,7 +162,7 @@ def _system_prompt(pet: Dict[str, Any]) -> str:
         sleep_line="You are asleep and grumpy about being woken up." if pet["sleeping"] else "You are awake.",
         now=datetime.now(TIMEZONE).strftime("%A, %d %B %Y, %H:%M"),
         closet=closet.as_text(),
-        integrations=_integrations_prompt() + context_providers.prompt(),
+        integrations=_integrations_prompt() + context_providers.prompt() + library_tools.prompt() + memory_tools.prompt(),
     )
 
 
@@ -325,9 +327,12 @@ def _gmail_tools() -> list:
 
 
 def reply(history: List[Dict[str, str]], pet: Dict[str, Any]) -> Dict[str, Any]:
-    """Send the conversation to Claude (running any closet tools it calls) and return the pet's reply."""
+    """Send the conversation to Claude (running any tools it calls) and return the pet's reply.
+
+    "sources" lists the library notes the reply could draw on, so the page can link to them.
+    """
     if not pet["alive"]:
-        return {"message": "...", "changes": []}
+        return {"message": "...", "changes": [], "sources": []}
 
     messages = history[-MAX_HISTORY:]
     # The API expects the conversation to start with the user.
@@ -337,6 +342,7 @@ def reply(history: List[Dict[str, str]], pet: Dict[str, Any]) -> Dict[str, Any]:
         raise ChatError("Say something first!")
 
     changes: List[str] = []
+    sources: List[Dict[str, Any]] = []
     try:
         runner = _client().beta.messages.tool_runner(
             model=MODEL,
@@ -344,7 +350,7 @@ def reply(history: List[Dict[str, str]], pet: Dict[str, Any]) -> Dict[str, Any]:
             system=_system_prompt(pet),
             messages=messages,
             tools=_closet_tools(changes) + _outfit_tools() + _notion_tools(changes) + _gmail_tools()
-            + context_providers.tools(),
+            + context_providers.tools() + library_tools.tools(changes, sources) + memory_tools.tools(changes),
             max_iterations=MAX_TOOL_ROUNDS,
         )
         # Each round is one model response. Text written right before a *lookup* (weather,
@@ -361,13 +367,17 @@ def reply(history: List[Dict[str, str]], pet: Dict[str, Any]) -> Dict[str, Any]:
         raise ChatError("The API key was rejected. Check ANTHROPIC_API_KEY in .env.")
     except anthropic.RateLimitError:
         raise ChatError("Too many messages, babe. Give me a sec!")
+    except anthropic.BadRequestError as e:
+        if "credit balance" in str(e):
+            raise ChatError("Out of API credits. Top up at console.anthropic.com (Plans & Billing).")
+        raise ChatError(f"API error ({e.status_code}). Try again.")
     except anthropic.APIStatusError as e:
         raise ChatError(f"API error ({e.status_code}). Try again.")
     except anthropic.APIConnectionError:
         raise ChatError("Can't reach the internet right now.")
 
     if response.stop_reason == "refusal":
-        return {"message": "Ουφ, as if! Γι' αυτό δεν μιλάω, bestie. Ρώτα με κάτι άλλο!", "changes": changes}
+        return {"message": "Ουφ, as if! Γι' αυτό δεν μιλάω, bestie. Ρώτα με κάτι άλλο!", "changes": changes, "sources": []}
 
     text = " ".join(kept)
-    return {"message": text or "...", "changes": changes}
+    return {"message": text or "...", "changes": changes, "sources": sources}

@@ -7,19 +7,63 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Tiny5&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="vendor/highlight-github.min.css">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="intro">
+  <div class="intro-cover" id="intro" aria-hidden="true"></div>
+  <script src="intro.js"></script>
   <main class="stage">
+    <!-- MY♥SHELF: the personal reading shelf (books read, in progress or waiting, rated with hearts) -->
+    <aside class="reading" id="reading-shelf" aria-label="My reading shelf">
+      <div class="reading-head">
+        <div class="walkman-top">
+          <span class="walkman-brand">MY♥SHELF</span>
+          <span class="walkman-right">
+            <button type="button" class="walkman-close" id="reading-add" aria-label="Add a book" title="Add a book">+</button>
+            <button type="button" class="walkman-close" id="reading-toggle" aria-expanded="true" title="Hide the books">◀</button>
+          </span>
+        </div>
+        <div class="reading-stats" id="reading-stats"></div>
+        <p class="reading-quip" id="reading-quip"></p>
+      </div>
+      <form class="reading-form" id="reading-form" hidden>
+        <input name="title" placeholder="Title" maxlength="120" required autocomplete="off">
+        <input name="author" placeholder="Author" maxlength="80" autocomplete="off">
+        <select name="status" aria-label="Status">
+          <option value="read">Read</option>
+          <option value="reading">Reading now</option>
+          <option value="shelf">On the shelf</option>
+        </select>
+        <div class="reading-colors" role="group" aria-label="Cover color">
+          <input type="color" name="colorpick" title="Any color" aria-label="Pick any color">
+        </div>
+        <div class="reading-rate" role="group" aria-label="Rating">
+          <button type="button" data-rate="1">♡</button><button type="button" data-rate="2">♡</button><button type="button" data-rate="3">♡</button><button type="button" data-rate="4">♡</button><button type="button" data-rate="5">♡</button>
+        </div>
+        <div class="reading-error" data-error role="alert"></div>
+        <div class="reading-actions">
+          <button type="submit" class="primary">SAVE</button>
+          <button type="button" data-cancel>CANCEL</button>
+          <button type="button" data-del hidden>DELETE</button>
+        </div>
+      </form>
+      <div class="reading-list" id="reading-list"></div>
+    </aside>
+
+    <div class="side-stack">
     <!-- Spotify "now playing" as a retro walkman (hidden until Spotify is connected) -->
     <aside class="walkman" id="walkman" hidden aria-label="Now playing on Spotify">
       <div class="walkman-top">
         <span class="walkman-brand">TAMA♥WALK</span>
         <span class="walkman-right">
+          <button type="button" class="walkman-mini-toggle" data-sp="toggle" id="walkman-mini-toggle" aria-label="Play or pause">▶</button>
           <span class="walkman-led" title="playing"></span>
+          <button type="button" class="walkman-close" id="walkman-min" aria-label="Minimize walkman" aria-expanded="true" title="Minimize">–</button>
           <button type="button" class="walkman-close" id="walkman-close" aria-label="Close walkman" title="Close (reopen from the music icon)">×</button>
         </span>
       </div>
+      <div class="walkman-body"><div class="walkman-inner">
       <div class="cassette">
         <div class="cassette-label">
           <canvas class="walkman-art" id="walkman-art" width="20" height="20"></canvas>
@@ -36,7 +80,41 @@
         <button type="button" data-sp="toggle" id="walkman-toggle" aria-label="Play or pause">▶</button>
         <button type="button" data-sp="next" aria-label="Next">▶▶</button>
       </div>
+      </div></div>
     </aside>
+
+    <!-- TAMA♥CLOCK: pixel clock, analog or digital, dressed in the current theme -->
+    <aside class="clock" id="clock" aria-label="Clock">
+      <div class="walkman-top">
+        <span class="walkman-brand">TAMA♥CLOCK</span>
+        <span class="walkman-right">
+          <button type="button" class="walkman-close" id="clock-min" aria-label="Minimize clock" aria-expanded="true" title="Minimize">–</button>
+          <button type="button" class="walkman-close" id="clock-close" aria-label="Close clock" title="Close (reopen from the clock icon)">×</button>
+        </span>
+      </div>
+      <div class="clock-body"><div class="clock-inner">
+      <canvas class="clock-face" id="clock-face" width="56" height="56" role="img"></canvas>
+      <div class="clock-tools">
+        <button type="button" class="clock-mode" id="clock-mode">DIGI</button>
+        <button type="button" class="clock-mode" id="clock-focus">FOCUS</button>
+      </div>
+      <div class="clock-controls" id="clock-controls" hidden>
+        <div class="clock-presets" role="group" aria-label="Focus length">
+          <button type="button" data-preset="25">25'</button>
+          <button type="button" data-preset="45">45'</button>
+          <button type="button" data-preset="50">50'</button>
+          <button type="button" data-preset="60">60'</button>
+          <button type="button" data-preset="90">90'</button>
+        </div>
+        <button type="button" data-adjust="-5" title="5 minutes less">−</button>
+        <button type="button" data-action="start" id="focus-start" class="primary">START</button>
+        <button type="button" data-adjust="5" title="5 minutes more">+</button>
+        <button type="button" data-action="skip" title="Skip to the next phase">▶▶</button>
+        <button type="button" data-action="reset" title="Restart this phase">↺</button>
+      </div>
+      </div></div>
+    </aside>
+    </div>
 
     <div class="device-wrap">
       <div class="keyring" aria-hidden="true"></div>
@@ -86,7 +164,8 @@
       <div class="chat-log" id="chat-log" aria-live="polite"></div>
       <form class="chat-form" id="chat-form">
         <button type="button" class="chat-mic" id="chat-mic" aria-label="Talk">MIC</button>
-        <input id="chat-input" type="text" maxlength="500" autocomplete="off" placeholder="Type or press MIC...">
+        <label class="chat-attach" title="Add a .txt, .md, .docx or .pdf to your library">+<input type="file" id="chat-file" accept=".txt,.md,.markdown,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden></label>
+        <input id="chat-input" type="text" maxlength="4000" autocomplete="off" placeholder="Type or press MIC...">
         <button type="submit" class="chat-send">SEND</button>
       </form>
     </section>
@@ -144,6 +223,57 @@
         <button type="button" id="calendar-wear" disabled>♥ WHAT SHOULD I WEAR FOR IT?</button>
       </div>
     </section>
+    <section class="window notifs" id="notifs" hidden aria-label="Notifications">
+      <header class="chat-title">
+        <span>♥ NOTIFS.EXE</span>
+        <button class="chat-close" id="notifs-close" aria-label="Close notifications">×</button>
+      </header>
+      <div class="weather-body notifs-body" id="notifs-body"></div>
+      <div class="weather-actions">
+        <button type="button" id="notifs-test">♥ SEND A TEST</button>
+      </div>
+    </section>
+    <!-- Personal knowledge base: books (topics) > chapters (sub-topics) > Markdown notes -->
+    <section class="window library" id="library" hidden aria-label="Library">
+      <header class="chat-title">
+        <span>♥ LIBRARY.EXE</span>
+        <button class="chat-close" id="library-close" aria-label="Close library">×</button>
+      </header>
+      <div class="lib-toolbar">
+        <form class="lib-search" id="lib-search" role="search">
+          <input type="search" placeholder="Search your notes..." maxlength="200" aria-label="Search your notes">
+          <button type="submit" class="lib-btn primary">GO</button>
+        </form>
+        <button type="button" class="lib-btn" id="lib-new-book">+ BOOK</button>
+        <label class="lib-btn lib-import" title="Add a .txt, .md, .docx or .pdf file">
+          IMPORT<input type="file" id="lib-import" accept=".txt,.md,.markdown,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
+        </label>
+      </div>
+      <div class="lib-body" id="lib-body"></div>
+      <div class="lib-dialog" id="lib-dialog" hidden></div>
+    </section>
+
+    <!-- What the pet remembers about you (looked up by the chat only when needed) -->
+    <section class="window memory" id="memory" hidden aria-label="Memory">
+      <header class="chat-title">
+        <span>♥ MEMORY.EXE</span>
+        <button class="chat-close" id="memory-close" aria-label="Close memory">×</button>
+      </header>
+      <div class="memory-list" id="memory-list"></div>
+      <form class="memory-form" id="memory-form">
+        <div class="memory-row">
+          <select name="category" aria-label="Category"></select>
+          <input name="subject" maxlength="80" placeholder="Who / what (optional)" autocomplete="off">
+        </div>
+        <textarea name="text" maxlength="500" rows="2" required placeholder="e.g. My team lead, loves deadlines"></textarea>
+        <div class="memory-row">
+          <label class="memory-private"><input type="checkbox" name="private"> Private (the chat never sees it)</label>
+          <button type="button" class="lib-btn" id="memory-cancel" hidden>CANCEL</button>
+          <button type="submit" class="lib-btn primary">ADD</button>
+        </div>
+      </form>
+    </section>
+
     <!-- First-time setup wizard (also reopened from the gear icon) -->
     <section class="window wizard" id="wizard" hidden aria-label="Setup">
       <header class="chat-title">
@@ -165,6 +295,13 @@
   </p>
 
   <script src="themes.js"></script>
+  <script src="vendor/marked.min.js"></script>
+  <script src="vendor/purify.min.js"></script>
+  <script src="vendor/highlight.min.js"></script>
   <script src="app.js"></script>
+  <script src="library.js"></script>
+  <script src="memory.js"></script>
+  <script src="clock.js"></script>
+  <script src="shelf.js"></script>
 </body>
 </html>

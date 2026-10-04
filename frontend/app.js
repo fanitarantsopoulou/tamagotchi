@@ -88,6 +88,11 @@ const S = {
   ],
   z: ["###", ".#.", "###"],
   skull: [".###.", "#.#.#", "#####", ".#.#."],
+  // the pet's open book while it studies with you, and the frames of a page turning over
+  book: [".###.###.", "#...#...#", "#.#.#.#.#", "#...#...#", "#########"],
+  bookTurn1: [".###.##..", "#...##.#.", "#.#.#.#.#", "#...#...#", "#########"], // right page lifts
+  bookTurn2: [".###.#...", "#...###..", "#.#.##..#", "#...#...#", "#########"], // standing up
+  bookTurn3: [".##..###.", "#.##....#", "#.#.#.#.#", "#...#...#", "#########"], // lands on the left
   thought: ["#......", ".......", ".#.....", "...###.", "..#####", "...###."], // dots + rice ball
   stink: ["#.", ".#", "#."],
   question: [".##.", "#..#", "..#.", ".#..", "....", ".#.."],
@@ -168,7 +173,11 @@ const ICON_ART = {
   mirror: ["..####..", ".#....#.", ".#.#..#.", ".#....#.", "..####..", "...##...", "...##...", "...##..."],
   weather: ["........", "..##....", ".####.#.", "########", "########", ".######.", "........", "........"],
   music: ["....##..", "....#.#.", "....#..#", "....#...", "....#...", ".###....", "####....", ".##....."],
+  bell: ["...##...", "..####..", ".######.", ".######.", ".######.", "########", "........", "...##..."],
   setup: ["...##...", ".#.##.#.", "..####..", "###..###", "###..###", "..####..", ".#.##.#.", "...##..."],
+  memory: ["..####..", ".#....#.", "#.#..#.#", "#......#", "#.####.#", ".#....#.", "..####..", "...##..."],
+  library: ["##.##.#.", "##.##.#.", "##.##.##", "#..#..##", "##.##.##", "##.##.##", "##.##..#", "########"],
+  clock: ["..####..", ".#.##.#.", "#..##..#", "#..###.#", "#......#", "#......#", ".#....#.", "..####.."],
   calendar: [".#....#.", "########", "########", "#......#", "#.##.#.#", "#......#", "#.#.##.#", "########"],
 };
 
@@ -183,7 +192,11 @@ const ICONS = [
   { id: "mirror", row: "bottom" },
   { id: "weather", row: "bottom" },
   { id: "music", row: "bottom" },
+  { id: "clock", row: "bottom" },
+  { id: "bell", row: "bottom" },
   { id: "calendar", row: "bottom" },
+  { id: "library", row: "bottom" },
+  { id: "memory", row: "bottom" },
   { id: "setup", row: "bottom" },
 ];
 const SELECTABLE = ICONS; // every icon is a function you can select
@@ -294,6 +307,44 @@ function updateIcons() {
   });
 }
 
+// ---------- window transitions ----------
+// Windows pop open with a CSS animation (it runs whenever an element goes from hidden to shown).
+// Closing plays the reverse first: the window is pinned where it is, so the rest of the page can
+// move into place right away, and is hidden when the animation ends. A tiny piezo blip goes with each.
+const WINDOW_CLOSE_MS = 160;
+const closingTimers = new WeakMap();
+let lastWindowOpen = 0;
+
+function showWindow(win) {
+  if (closingTimers.has(win)) finishClosing(win); // reopened mid-close: snap back first
+  if (!win.hidden) return;
+  win.hidden = false;
+  lastWindowOpen = performance.now();
+  play("winOpen");
+}
+
+function hideWindow(win) {
+  if (win.hidden || closingTimers.has(win)) return;
+  const r = win.getBoundingClientRect();
+  Object.assign(win.style, {
+    position: "fixed", left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`,
+    margin: "0", bottom: "auto", transform: "none", zIndex: "30",
+  });
+  win.classList.add("win-closing");
+  closingTimers.set(win, setTimeout(() => finishClosing(win), WINDOW_CLOSE_MS));
+  // Only blip if this close isn't part of switching to another window (which plays its own sound).
+  const closedAt = performance.now();
+  setTimeout(() => lastWindowOpen < closedAt && play("winClose"), 0);
+}
+
+function finishClosing(win) {
+  clearTimeout(closingTimers.get(win));
+  closingTimers.delete(win);
+  win.classList.remove("win-closing");
+  for (const prop of ["position", "left", "top", "width", "height", "margin", "bottom", "transform", "zIndex"]) win.style[prop] = "";
+  win.hidden = true;
+}
+
 // ---------- state ----------
 const state = {
   pet: null,
@@ -351,6 +402,8 @@ const SOUNDS = {
   thinking: [[1760, 120], [0, 60], [1976, 120], [0, 60], [2093, 220]],
   curious: [[2093, 70], [0, 30], [3136, 160]],
   sleeping: [[2637, 260], [2093, 260], [1568, 420]],
+  winOpen: [[2637, 25], [3520, 35]],
+  winClose: [[3520, 25], [2637, 35]],
   transform: [[1568, 40], [2093, 40], [2637, 40], [3136, 40], [4186, 40], [0, 40], [1568, 40], [2093, 40], [2637, 40], [3136, 40], [4186, 40], [5274, 160]],
   hatch: [[2093, 80], [2637, 80], [3136, 80], [2637, 80], [3136, 80], [4186, 240]],
 };
@@ -405,6 +458,10 @@ async function runIcon(icon) {
   if (icon.id === "calendar") return openCalendar();
   if (icon.id === "setup") return openWizard();
   if (icon.id === "music") return toggleWalkman();
+  if (icon.id === "clock") return toggleClock();
+  if (icon.id === "bell") return openNotifs();
+  if (icon.id === "library") return openLibrary();
+  if (icon.id === "memory") return openMemory();
 
   try {
     const { pet, message } = await api(`/pet/${ACTION_FOR[icon.id]}`, { method: "POST" });
@@ -489,9 +546,15 @@ document.addEventListener("keydown", (e) => {
       closeWeather();
       closeCalendar();
       closeWizard();
+      closeNotifs();
+      closeLibrary();
+      closeMemory();
+  closeMemory();
     }
     return;
   }
+  // Any other text field (e.g. the shelf form) keeps its keys: the device shortcuts would eat a, b, c and space.
+  if (e.target.closest?.("input, textarea, select")) return;
   const map = { ArrowLeft: "A", ArrowRight: "A", a: "A", Enter: "B", " ": "B", b: "B", Escape: "C", c: "C" };
   if (map[e.key]) {
     e.preventDefault();
@@ -520,12 +583,15 @@ function addMessage(kind, text) {
 
 async function openChat() {
   unlockSpeech();
+  closeNotifs();
+  closeLibrary();
+  closeMemory();
   closeOutfits();
   closeMirror();
   closeWeather();
   closeCalendar();
   closeWizard();
-  chatEl.hidden = false;
+  showWindow(chatEl);
   chatInput.focus();
   if (chatHistory.length) return;
   try {
@@ -540,7 +606,7 @@ async function openChat() {
 }
 
 function closeChat() {
-  chatEl.hidden = true;
+  hideWindow(chatEl);
   stopListening();
   window.speechSynthesis?.cancel();
 }
@@ -552,7 +618,7 @@ async function sendMessage(text) {
   const typing = addMessage("pet typing", "...");
   sendBtn.disabled = true;
   try {
-    const { message, changes, theme } = await api("/chat", { method: "POST", body: JSON.stringify({ messages: chatHistory }) });
+    const { message, changes, theme, sources = [] } = await api("/chat", { method: "POST", body: JSON.stringify({ messages: chatHistory }) });
     if (theme) {
       // The backend recognized a theme request: play the transformation, then show the reply.
       typing.textContent = "✨ ...";
@@ -562,6 +628,7 @@ async function sendMessage(text) {
     typing.remove();
     addMessage("pet", message);
     changes.forEach((change) => addMessage("note", `✓ ${change}`));
+    sources.forEach((source) => showSource(source));
     speak(message);
     state.anim = { type: "play", start: performance.now(), duration: 1500 };
   } catch (err) {
@@ -655,12 +722,15 @@ function drawTransform(now, cx, cy) {
 }
 
 async function openOutfits() {
+  closeNotifs();
+  closeLibrary();
+  closeMemory();
   closeChat();
   closeMirror();
   closeWeather();
   closeCalendar();
   closeWizard();
-  outfitsEl.hidden = false;
+  showWindow(outfitsEl);
   try {
     const [presets, current] = await Promise.all([api("/theme/presets"), api("/theme")]);
     outfitList.innerHTML = "";
@@ -686,7 +756,7 @@ async function openOutfits() {
 }
 
 function closeOutfits() {
-  outfitsEl.hidden = true;
+  hideWindow(outfitsEl);
 }
 
 function pickOutfit(preset, btn) {
@@ -804,12 +874,15 @@ async function retake() {
 }
 
 async function openMirror() {
+  closeNotifs();
+  closeLibrary();
+  closeMemory();
   closeChat();
   closeOutfits();
   closeWeather();
   closeCalendar();
   closeWizard();
-  mirrorEl.hidden = false;
+  showWindow(mirrorEl);
   mirror.useFile = false;
   mirror.photo = null;
   mirrorSay("");
@@ -826,7 +899,7 @@ async function openMirror() {
 
 function closeMirror() {
   stopCamera();
-  mirrorEl.hidden = true;
+  hideWindow(mirrorEl);
 }
 
 // Upload the photo; the pet answers in the chat and reacts through its mood.
@@ -991,17 +1064,20 @@ async function loadWeather(city) {
 }
 
 async function openWeather() {
+  closeNotifs();
+  closeLibrary();
+  closeMemory();
   closeChat();
   closeOutfits();
   closeMirror();
   closeCalendar();
   closeWizard();
-  weatherEl.hidden = false;
+  showWindow(weatherEl);
   await loadWeather(wx.city);
 }
 
 function closeWeather() {
-  weatherEl.hidden = true;
+  hideWindow(weatherEl);
 }
 
 // Ask the pet what to wear on the selected day (and city), in the chat.
@@ -1059,12 +1135,15 @@ function renderCalendar(days) {
 }
 
 async function openCalendar() {
+  closeNotifs();
+  closeLibrary();
+  closeMemory();
   closeChat();
   closeOutfits();
   closeMirror();
   closeWeather();
   closeWizard();
-  calendarEl.hidden = false;
+  showWindow(calendarEl);
   calendarPick = null;
   calendarWear.disabled = true;
   calendarBody.replaceChildren(el("div", "wx-error", "Loading..."));
@@ -1077,7 +1156,7 @@ async function openCalendar() {
 }
 
 function closeCalendar() {
-  calendarEl.hidden = true;
+  hideWindow(calendarEl);
 }
 
 // Ask the pet what to wear for the selected event, in the chat.
@@ -1104,6 +1183,8 @@ const walkman = {
   artist: document.getElementById("walkman-artist"),
   bar: document.getElementById("walkman-bar"),
   toggle: document.getElementById("walkman-toggle"),
+  miniToggle: document.getElementById("walkman-mini-toggle"),
+  minButton: document.getElementById("walkman-min"),
   art: document.getElementById("walkman-art"),
   track: null,
   syncedAt: 0,
@@ -1125,7 +1206,7 @@ function drawWalkmanArt(url) {
 function renderWalkman() {
   const t = walkman.track;
   walkman.el.classList.toggle("playing", !!t?.is_playing);
-  walkman.toggle.textContent = t?.is_playing ? "❚❚" : "▶";
+  walkman.toggle.textContent = walkman.miniToggle.textContent = t?.is_playing ? "❚❚" : "▶";
   if (!t) {
     walkman.bar.style.width = "0";
     return;
@@ -1153,10 +1234,34 @@ function setWalkmanClosed(closed) {
   }
 }
 
+// Minimized: only the top bar stays (with a small play/pause); the cassette folds away.
+// Remembered per browser, like the closed state.
+function setWalkmanMinimized(minimized) {
+  walkman.el.classList.toggle("minimized", minimized);
+  walkman.minButton.textContent = minimized ? "□" : "–";
+  walkman.minButton.title = minimized ? "Restore" : "Minimize";
+  walkman.minButton.setAttribute("aria-expanded", String(!minimized));
+  try {
+    localStorage.setItem("walkmanMinimized", String(minimized));
+  } catch {
+    /* not remembered, that's all */
+  }
+}
+
+walkman.minButton.addEventListener("click", () => {
+  play("click");
+  setWalkmanMinimized(!walkman.el.classList.contains("minimized"));
+});
+try {
+  if (localStorage.getItem("walkmanMinimized") === "true") setWalkmanMinimized(true);
+} catch {
+  /* storage blocked: start expanded */
+}
+
 function toggleWalkman() {
   const close = !walkmanClosed();
   setWalkmanClosed(close);
-  if (close) walkman.el.hidden = true;
+  if (close) hideWindow(walkman.el);
   else refreshWalkman();
   say(close ? "MUSIC OFF" : "MUSIC ON");
 }
@@ -1190,7 +1295,7 @@ async function refreshWalkman() {
 document.getElementById("walkman-close").addEventListener("click", () => {
   play("click");
   setWalkmanClosed(true);
-  walkman.el.hidden = true;
+  hideWindow(walkman.el);
 });
 
 document.querySelectorAll("[data-sp]").forEach((btn) =>
@@ -1227,7 +1332,8 @@ const wizard = {
 const ICON_HELP = {
   feed: "feed", light: "light / sleep", play: "play", clean: "clean up",
   stats: "stats", chat: "chat with me", outfit: "outfits", mirror: "mirror",
-  weather: "weather", music: "show/hide walkman", calendar: "calendar", setup: "this setup",
+  weather: "weather", music: "show/hide walkman", clock: "show/hide clock", bell: "notifications", calendar: "calendar", setup: "this setup",
+  library: "library (your notes)", memory: "what I remember about you",
 };
 
 function para(text) {
@@ -1323,6 +1429,9 @@ function renderWizard() {
 }
 
 async function openWizard() {
+  closeNotifs();
+  closeLibrary();
+  closeMemory();
   closeChat();
   closeOutfits();
   closeMirror();
@@ -1340,12 +1449,12 @@ async function openWizard() {
     /* keep the defaults */
   }
   wizard.step = 0;
-  wizard.el.hidden = false;
+  showWindow(wizard.el);
   renderWizard();
 }
 
 function closeWizard() {
-  wizard.el.hidden = true;
+  hideWindow(wizard.el);
 }
 
 async function finishWizard() {
@@ -1392,6 +1501,47 @@ wizard.el.addEventListener("keydown", (e) => {
 api("/profile")
   .then((profile) => !profile.onboarded && openWizard())
   .catch(() => {});
+
+// ---------- Notifications: NOTIFS.EXE inbox ----------
+// The backend's notifier sends reminders to Telegram; this window shows the same messages.
+const notifsEl = document.getElementById("notifs");
+const notifsBody = document.getElementById("notifs-body");
+
+function renderNotifs({ telegram, inbox }) {
+  notifsBody.replaceChildren();
+  const status = el("div", "notif-status");
+  status.append("Telegram: ", el("b", "", telegram ? "connected ✓" : "not connected"));
+  notifsBody.append(status);
+  if (!inbox.length) notifsBody.append(el("div", "cal-empty", "No notifications yet."));
+  inbox.forEach((n) => {
+    const item = el("div", "notif");
+    const when = new Date(n.at).toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+    item.append(el("time", "", when), n.text);
+    notifsBody.append(item);
+  });
+}
+
+async function openNotifs() {
+  [closeChat, closeOutfits, closeMirror, closeWeather, closeCalendar, closeWizard, closeLibrary, closeMemory].forEach((close) => close());
+  showWindow(notifsEl);
+  notifsBody.replaceChildren(el("div", "wx-error", "Loading..."));
+  try {
+    renderNotifs(await api("/notifications"));
+  } catch (e) {
+    notifsBody.replaceChildren(el("div", "wx-error", e.message));
+  }
+}
+
+function closeNotifs() {
+  hideWindow(notifsEl);
+}
+
+document.getElementById("notifs-test").addEventListener("click", async () => {
+  play("click");
+  await api("/notifications/test", { method: "POST" });
+  renderNotifs(await api("/notifications"));
+});
+document.getElementById("notifs-close").addEventListener("click", closeNotifs);
 
 // ---------- voice: speech-to-text in, text-to-speech out (all in the browser) ----------
 const VOICE_LANG = "el-GR";
@@ -1540,6 +1690,24 @@ function drawMoodEffects(mood, stage, x, y, w, now, frame) {
   }
 }
 
+// The pet studying: it nods along every few seconds, holds an open book in front of it (a page
+// turns every 5 seconds) and a "..." thought blinks above its head.
+const PAGE_TURN_MS = 5000;
+
+function drawReading(rows, x, y, w, now) {
+  const nod = Math.floor(now / 1800) % 3 === 2 ? 1 : 0;
+  drawSprite(ctx, rows, x, y + nod);
+  const bx = x + Math.round(w / 2) - 4;
+  const by = GROUND - S.book.length;
+  ctx.clearRect(bx - 1, by - 1, S.book[0].length + 2, S.book.length + 1); // the book covers the body
+  // a page turns every 5 seconds: three quick frames, then the book lies open again
+  const t = now % PAGE_TURN_MS;
+  const page = t < 150 ? S.bookTurn1 : t < 300 ? S.bookTurn2 : t < 450 ? S.bookTurn3 : S.book;
+  drawSprite(ctx, page, bx, by);
+  const dots = Math.floor(now / 600) % 4; // . .. ... (pause)
+  for (let i = 0; i < Math.min(dots, 3); i++) ctx.fillRect(x + w + 2 + i * 2, y - 2, 1, 1);
+}
+
 function render(now) {
   requestAnimationFrame(render);
   ctx.clearRect(0, 0, W, H);
@@ -1580,11 +1748,15 @@ function render(now) {
   const rows = frame && !sleeping ? variant(p.stage, face, "step") : variant(p.stage, face);
   const w = rows[0].length;
 
-  if (!sleeping && !anim) wander(now, w, style);
+  // Pomodoro: during a focus round the pet sits still and reads along; on a break it bounces.
+  const focus = window.FocusTimer?.running ? window.FocusTimer.phase : null;
+  const reading = focus === "focus" && !sleeping && !anim && !state.transform;
+  if (reading) state.x = Math.round((W - w) / 2) - 4;
+  else if (!sleeping && !anim) wander(now, w, style);
   let x = state.x;
   let y = GROUND - rows.length;
-  if (!sleeping && !anim) {
-    if (style.bounce && frame) y -= 1;
+  if (!sleeping && !anim && !reading) {
+    if ((style.bounce || focus) && frame) y -= 1; // a break is play time
     if (style.shake) x += Math.floor(now / 120) % 2; // shivering
   }
 
@@ -1605,6 +1777,11 @@ function render(now) {
   if (state.transform) {
     drawTransform(now, x + w / 2, y + rows.length / 2);
     drawSprite(ctx, rows, x, y, { flip: Math.floor(now / 120) % 2 === 0 }); // spinning
+    return;
+  }
+
+  if (reading) {
+    drawReading(rows, x, y, w, now);
     return;
   }
 

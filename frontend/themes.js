@@ -319,7 +319,22 @@
       root.setProperty("--theme-2", accent);
       root.setProperty("--theme-3", deep);
       document.documentElement.dataset.motif = theme.motif;
+      // remembered so the opening effect (intro.js) can use them on the next visit, before the theme loads
+      try { localStorage.setItem("tama-intro-colors", JSON.stringify([main, accent])); } catch {}
       showWallpaper(drawWallpaper([main, accent, deep], theme.motif));
+      document.dispatchEvent(new CustomEvent("themechange", { detail: theme }));
+    },
+
+    // The active motif's sprites with their colors, for widgets that decorate themselves
+    // (e.g. the clock): [{ rows, palette }] in the same palette logic as the wallpaper.
+    motifSprites() {
+      const theme = current ? JSON.parse(current) : { motif: "default", colors: ["#ffb3d4", "#e0408f"] };
+      const { main, accent, deep } = palette(theme.colors);
+      const m = MOTIFS[theme.motif] || MOTIFS.default;
+      return m.sprites.map((name, i) => ({
+        rows: SPRITES[name],
+        palette: (m.palettes && m.palettes[i]) || { o: deep, "#": i % 2 ? accent : main, "+": i % 2 ? main : accent, w: "#ffffff" },
+      }));
     },
 
     // Draw the active motif's LCD effect (called every frame by app.js).

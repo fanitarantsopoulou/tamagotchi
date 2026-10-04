@@ -2,5 +2,14 @@
   "weather": {
     "city": "Florina",
     "country_code": "GR"
+  },
+  "notifications": {
+    "quiet_hours": [
+      "23:00",
+      "08:00"
+    ],
+    "digest_time": "08:30",
+    "calendar_lead_minutes": 30,
+    "max_per_day": 10
   }
 }
