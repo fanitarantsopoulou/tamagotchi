@@ -5,6 +5,7 @@
 **A 90s virtual pet with a 2020s brain.**
 A pixel-perfect Tamagotchi that lives in your browser and doubles as an AI bestie for outfits, makeup, weather, plans, music, notes, focus and books.
 
+[![CI](https://github.com/fanitarantsopoulou/tamagotchi/actions/workflows/ci.yml/badge.svg)](https://github.com/fanitarantsopoulou/tamagotchi/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688?style=for-the-badge&logo=fastapi&logoColor=white)
 ![Claude](https://img.shields.io/badge/Claude-Haiku%204.5-D97757?style=for-the-badge&logo=anthropic&logoColor=white)
@@ -36,6 +37,7 @@ Everything runs in a **Docker** container on a Mac and is reachable from the pho
 - [Project structure](#-project-structure)
 - [Getting started](#-getting-started)
 - [Connecting the integrations](#-connecting-the-integrations)
+- [Tests & CI](#-tests--ci)
 - [Privacy & security](#-privacy--security)
 - [Roadmap](#-roadmap)
 - [Design inspiration](#-design-inspiration)
@@ -212,6 +214,7 @@ flowchart LR
 | AI | Anthropic API (Claude Haiku 4.5): tool use, structured outputs, vision |
 | Integrations | Open-Meteo, Google Calendar & Gmail (read-only OAuth), Notion API, Spotify Web API (OAuth PKCE) |
 | Infrastructure | Docker Compose, Tailscale Serve (HTTPS) |
+| Quality | pytest, GitHub Actions (tests, frontend syntax check, Docker build) |
 
 ## 🗂️ Project structure
 
@@ -238,6 +241,7 @@ tamagotchi/
 │   ├── reading/                # reading shelf: JSON store and routes
 │   ├── telegram_client.py, notifier.py, notification_providers/  # Telegram notifications
 │   ├── storage.py, settings.py # safe JSON writes, config loading
+│   ├── tests/                  # pytest suite
 │   └── data/                   # runtime JSON state + library.db, memory.db (git-ignored)
 ├── frontend/
 │   ├── index.html, style.css
@@ -251,6 +255,7 @@ tamagotchi/
 │   └── vendor/                 # marked, DOMPurify, highlight.js (served locally)
 ├── config/settings.json        # home city, notification quiet hours and digest time
 ├── docs/images/                # README screenshots & inspiration
+├── .github/workflows/ci.yml    # tests, frontend check, Docker build
 ├── Dockerfile, docker-compose.yml
 └── .env.example                # API keys template (real .env is git-ignored)
 ```
@@ -336,6 +341,19 @@ All integrations are optional. Each one switches itself on once it's configured.
 | **Spotify** | Create an app at developer.spotify.com/dashboard with the redirect URI `http://127.0.0.1:8765/callback`, add `SPOTIFY_CLIENT_ID=...` to `.env`, then run `.venv/bin/python backend/spotify_client.py` once. Playback control needs Premium. |
 
 After adding keys to `.env`, run `docker compose up -d --force-recreate`.
+
+---
+
+## 🧪 Tests & CI
+
+The backend has a **pytest** suite (`backend/tests/`) covering the pet simulation (stats over time, stages, moods, actions), the reading shelf store and its endpoints, the library (accent-insensitive Greek search, private books and chapters, `save_to`, place suggestions), the memory store, file imports and the atomic JSON writes. Every test runs on throwaway files and databases, so it never touches real data, and no test calls the Anthropic API.
+
+```bash
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/pytest
+```
+
+**GitHub Actions** runs on every push to `main` and every pull request: the test suite, a syntax check of every frontend script, and a Docker image build.
 
 ---
 
